@@ -1,0 +1,6 @@
+SQLAlchemy==0.9.2
+Twisted==13.2.0
+autobahn==0.7.4
+psycopg2==2.5.2
+pyOpenSSL==0.13.1
+zope.interface==4.1.0
