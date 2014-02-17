@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     listenWS(factory, contextFactory)
 
-    webdir = File(".")
+    webdir = File("./web/")
     webdir.contentTypes['.crt'] = 'application/x-x509-ca-cert'
     web = Site(webdir)
 
