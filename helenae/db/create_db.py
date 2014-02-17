@@ -25,7 +25,7 @@ class Users(Base):
 if __name__ == '__main__':
     from sqlalchemy import text
     from sqlalchemy.orm import sessionmaker
-    engine = sql.create_engine('postgresql://Relrin:05909333@localhost/csan')
+    engine = sql.create_engine('postgresql://user:password@localhost/csan')
 
     # defined tables at this file are created in selected DB
     Base.metadata.create_all(engine)
