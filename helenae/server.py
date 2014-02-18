@@ -27,7 +27,7 @@ engine = sqlalchemy.create_engine('postgresql://Relrin:05909333@localhost/csan',
 
 class DFSServerProtocol(WebSocketServerProtocol):
 
-     commands = {"AUTH": "autorization with server",
+    commands = {"AUTH": "autorization with server",
                 "READ": "read some file from storage",
                 "WRTE": "write file into storage",
                 "DELT": "delete file from storage",
@@ -35,6 +35,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 "LIST": "get list of all files from storage with this user",
                 "SYNC": "synchronize all files with storage on the server",
                 "EXIT": "disconnect from server or end session"}
+
 
     def __init__(self):
         # get object from connection pool and create session
@@ -80,7 +81,18 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 json_data = self.authorization(json_data)
         # for authorized users
         else:
-            if
+            if json_data['cmd'] == 'READ':
+                pass
+            elif json_data['cmd'] == 'WRTE':
+                pass
+            elif json_data['cmd'] == 'DELT':
+                pass
+            elif json_data['cmd'] == 'RNME':
+                pass
+            elif json_data['cmd'] == 'SYNC':
+                pass
+            elif json_data['cmd'] == 'LIST':
+                pass
         response = dumps(json_data)
         self.sendMessage(str(response))
 
