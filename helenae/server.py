@@ -22,7 +22,7 @@ from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerPr
 
 log_file = logfile.LogFile("service.log", ".")
 log.startLogging(log_file)
-engine = sqlalchemy.create_engine('postgresql://Relrin:05909333@localhost/csan', pool_size=20, max_overflow=0)
+engine = sqlalchemy.create_engine('postgresql://user:password@localhost/csan', pool_size=20, max_overflow=0)
 
 
 class DFSServerProtocol(WebSocketServerProtocol):
