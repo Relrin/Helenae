@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from db.create_db import Users
 
 from twisted.internet import reactor, ssl
-from twisted.python import log
+from twisted.python import log, logfile
 from twisted.web.server import Site
 from twisted.web.static import File
 
@@ -19,39 +19,52 @@ from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerPr
 # TODO: Authentication under PostgreSQL+SQLAlchemy ORM
 # TODO: Errors/Exceptions processing
 
-engine = sqlalchemy.create_engine('postgresql://user:password@localhost/csan', pool_size=20, max_overflow=0)
+
+log_file = logfile.LogFile("service.log", ".")
+log.startLogging(log_file)
+engine = sqlalchemy.create_engine('postgresql://Relrin:05909333@localhost/csan', pool_size=20, max_overflow=0)
 
 
 class DFSServerProtocol(WebSocketServerProtocol):
+
+     commands = {"AUTH": "autorization with server",
+                "READ": "read some file from storage",
+                "WRTE": "write file into storage",
+                "DELT": "delete file from storage",
+                "RNME": "rename file",
+                "LIST": "get list of all files from storage with this user",
+                "SYNC": "synchronize all files with storage on the server",
+                "EXIT": "disconnect from server or end session"}
 
     def __init__(self):
         # get object from connection pool and create session
         # DONT FORGET use after all "self.sesison.close()"!!!
         self.Session = sessionmaker(bind=engine)
 
-    def __del__(self):
-        self.session.close()
-
     def authorization(self, data):
         """
             Checking user with DB
         """
+        log.msg("[AUTH] User=%s trying to auth..." % data['user'])
         session = self.Session()
         result = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user']))
         result = result.fetchone()
         if result is None:
             data['cmd'] = 'RAUT'
             data['error'] = 'User not found'
+            log.msg("[AUTH] User=%s not found" % data['user'])
         else:
             if result['name'] == data['user']:
                 # correct users info --> real user
                 if result['password'] == data['password']:
                     data['cmd'] = 'HELP'
                     data['auth'] = True
+                    log.msg("[AUTH] User=%s successfully logged..." % data['user'])
                 # incorrect password --> fake user
                 else:
                     data['cmd'] = 'RAUT'
                     data['error'] = 'Incorrect password. Try again...'
+                    log.msg("[AUTH] Incorrect password for user=%s" % data['user'])
         session.close()
         return data
 
@@ -67,7 +80,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 json_data = self.authorization(json_data)
         # for authorized users
         else:
-            pass
+            if
         response = dumps(json_data)
         self.sendMessage(str(response))
 

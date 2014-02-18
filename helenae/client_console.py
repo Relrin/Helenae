@@ -1,4 +1,6 @@
 import sys
+import os
+import platform
 
 from json import dumps, loads
 
@@ -15,35 +17,107 @@ from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientPr
 
 class DFSClientProtocol(WebSocketClientProtocol):
 
-    def onOpen(self):
+    commands = {"AUTH": "autorization with server",
+                "READ": "read some file from storage",
+                "WRTE": "write file into storage",
+                "DELT": "delete file from storage",
+                "RNME": "rename file",
+                "LIST": "get list of all files from storage with this user",
+                "SYNC": "synchronize all files with storage on the server",
+                "EXIT": "disconnect from server or end session"}
+
+    def __init__(self):
+        self.counterAttemptsLogin = 3
+
+    def mainMenu(self):
         """
-            Send auth request to server, when create connection
+            Print available commands into console
+        """
+        print "Available commands:"
+        for cmd in sorted(self.commands.keys()):
+            print "\t%s \t %s" % (cmd, self.commands[cmd])
+
+    def inputData(self):
+        """
+            Input login and pass from keyboard for auth
         """
         login = raw_input('Login:')
         password = raw_input('Password:')
         hash_password = str(hash(password))
-        data = dumps({'cmd': 'AUTH', 'user': login, 'password': hash_password, 'auth': False, 'error': 0})
+        return login, hash_password
+
+    def constructData(self, cmd, user, hash, auth, error=''):
+        """
+            Create JSON for server
+        """
+        data = {}
+        data['cmd'] = cmd
+        data['user'] = user
+        data['password'] = hash
+        data['auth'] = auth
+        data['error'] = error
+        return dumps(data)
+
+    def onOpen(self):
+        """
+            Send auth request to server, when create connection
+        """
+        login, hash_password = self.inputData()
+        data = dumps({'cmd': 'AUTH', 'user': login, 'password': hash_password, 'auth': False, 'error': ''})
         self.sendMessage(str(data))
 
     def onMessage(self, payload, isBinary):
         """
             Processing responses from server and send new requests to there
         """
-        json_data = loads(payload)
+        data = loads(payload)
         # for none-authorized users commands
-        if json_data['auth'] == False:
+        if data['auth'] == False:
             # error in login or password --> try again...
-            if json_data['cmd'] == 'RAUT':
-                print 'Error: %s' % json_data['error']
-                json_data['user'] = raw_input('Login:')
-                password= raw_input('Password:')
-                json_data['password'] = str(hash(password))
-                json_data['cmd'] = 'AUTH'
-            if json_data['cmd'] == 'BBYE':
-                print 'server say BYE-BYE!'
+            if data['cmd'] == 'RAUT':
+                if self.counterAttemptsLogin > 0:
+                    print '\nError: %s' % data['error']
+                    print 'Attempts left: %d\n' % self.counterAttemptsLogin
+                    self.counterAttemptsLogin -= 1
+                    login, hash_password = self.inputData()
+                    data = self.constructData('AUTH', login, hash_password, False)
+                else:
+                    print '\nTrying to hacking account or DDoS server? I will stop YOU!'
+                    reactor.stop()
         # for authorized users commands
         else:
-            print json_data
+            # clear console at show main menu
+            if platform.system() == "Linux":
+                # its Linux/MacOS
+                os.system('clear')
+            else:
+                # its Windows
+                os.system('cls')
+            self.mainMenu()
+            cmd = ''
+            while cmd not in self.commands.keys():
+                cmd = raw_input('Command: ')
+            if cmd == 'AUTH':
+                self.counterAttemptsLogin = 3
+                login, hash_password = self.inputData()
+                data = self.constructData('AUTH', login, hash_password, False)
+            elif cmd == 'READ':
+                pass
+            elif cmd == 'WRTE':
+                pass
+            elif cmd == 'DELT':
+                pass
+            elif cmd == 'RNME':
+                pass
+            elif cmd == 'SYNC':
+                pass
+            elif cmd == 'LIST':
+                pass
+            elif cmd == 'EXIT':
+                print 'Disconnected from server...'
+                reactor.stop()
+        # send new request for server in JSON
+        self.sendMessage(str(data))
 
 
 if __name__ == '__main__':
