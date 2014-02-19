@@ -1,6 +1,9 @@
 import sys
 import os
 import platform
+import getpass
+
+import commands
 
 from json import dumps, loads
 
@@ -15,19 +18,64 @@ from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientPr
 # TODO: Define commands for USER (auth, read/write/sync files, etc.)
 # TODO: Add methods/commands into ServerClientSSL
 
+
 class DFSClientProtocol(WebSocketClientProtocol):
 
-    commands = {"AUTH": "autorization with server",
-                "READ": "read some file from storage",
-                "WRTE": "write file into storage",
-                "DELT": "delete file from storage",
-                "RNME": "rename file",
-                "LIST": "get list of all files from storage with this user",
-                "SYNC": "synchronize all files with storage on the server",
-                "EXIT": "disconnect from server or end session"}
+    commands = commands.commands_user
 
     def __init__(self):
         self.counterAttemptsLogin = 3
+        self.commands_handlers = self.__initHandlersUser()
+
+    def __initHandlersUser(self):
+        """
+            Initialize handlers for every response from server
+        """
+        handlers = commands.commands_handlers_user
+        # basic commands
+        handlers['AUTH'] = self.__AUTH
+        handlers['READ'] = None
+        handlers['WRTE'] = None
+        handlers['DELT'] = None
+        handlers['RNME'] = None
+        handlers['SYNC'] = None
+        handlers['LIST'] = None
+        handlers['EXIT'] = self.__EXIT
+        # errors, bans, etc.
+        handlers['RAUT'] = self.__RAUT
+        handlers['BANN'] = None
+        return handlers
+
+    def __AUTH(self, data):
+        """
+            Processing for AUTH command
+        """
+        self.counterAttemptsLogin = 3
+        login, hash_password = self.inputData()
+        data = commands.constructDataClient('AUTH', login, hash_password, False)
+        return data
+
+    def __EXIT(self, data):
+        """
+            Processing for EXIT command
+        """
+        print 'Disconnected from server...'
+        reactor.stop()
+
+    def __RAUT(self, data):
+        """
+            Processing for RAUTH command
+        """
+        if self.counterAttemptsLogin > 0:
+            print '\nError: %s' % data['error']
+            print 'Attempts left: %d\n' % self.counterAttemptsLogin
+            self.counterAttemptsLogin -= 1
+            login, hash_password = self.inputData()
+            data = commands.constructDataClient('AUTH', login, hash_password, False)
+        else:
+            print '\nTrying to hacking account or DDoS server? I will stop YOU!'
+            reactor.stop()
+        return data
 
     def mainMenu(self):
         """
@@ -42,21 +90,9 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Input login and pass from keyboard for auth
         """
         login = raw_input('Login:')
-        password = raw_input('Password:')
+        password = getpass.getpass('Password:')
         hash_password = str(hash(password))
         return login, hash_password
-
-    def constructData(self, cmd, user, hash, auth, error=''):
-        """
-            Create JSON for server
-        """
-        data = {}
-        data['cmd'] = cmd
-        data['user'] = user
-        data['password'] = hash
-        data['auth'] = auth
-        data['error'] = error
-        return dumps(data)
 
     def onOpen(self):
         """
@@ -73,17 +109,13 @@ class DFSClientProtocol(WebSocketClientProtocol):
         data = loads(payload)
         # for none-authorized users commands
         if data['auth'] == False:
-            # error in login or password --> try again...
-            if data['cmd'] == 'RAUT':
-                if self.counterAttemptsLogin > 0:
-                    print '\nError: %s' % data['error']
-                    print 'Attempts left: %d\n' % self.counterAttemptsLogin
-                    self.counterAttemptsLogin -= 1
-                    login, hash_password = self.inputData()
-                    data = self.constructData('AUTH', login, hash_password, False)
-                else:
-                    print '\nTrying to hacking account or DDoS server? I will stop YOU!'
-                    reactor.stop()
+            cmd = data['cmd']
+            # not realized function? --> try enter next command and print error
+            if (self.commands_handlers[cmd] is None):
+                print '%s command is not already realized...' % cmd
+            else:
+                # fetch and execute command
+                data = self.commands_handlers[cmd](data)
         # for authorized users commands
         else:
             # clear console at show main menu
@@ -93,29 +125,17 @@ class DFSClientProtocol(WebSocketClientProtocol):
             else:
                 # its Windows
                 os.system('cls')
+            # get user a opportunity to working with server/files/etc.
             self.mainMenu()
             cmd = ''
             while cmd not in self.commands.keys():
-                cmd = raw_input('Command: ')
-            if cmd == 'AUTH':
-                self.counterAttemptsLogin = 3
-                login, hash_password = self.inputData()
-                data = self.constructData('AUTH', login, hash_password, False)
-            elif cmd == 'READ':
-                pass
-            elif cmd == 'WRTE':
-                pass
-            elif cmd == 'DELT':
-                pass
-            elif cmd == 'RNME':
-                pass
-            elif cmd == 'SYNC':
-                pass
-            elif cmd == 'LIST':
-                pass
-            elif cmd == 'EXIT':
-                print 'Disconnected from server...'
-                reactor.stop()
+                cmd = raw_input('Command: ').upper()
+                # not realized function? --> try enter next command and print error
+                if (cmd not in self.commands.keys() or (self.commands_handlers[cmd] is None)):
+                    print '%s command is not already realized...' % cmd
+                    cmd = ''
+            # fetch and execute command
+            data = self.commands_handlers[cmd](data)
         # send new request for server in JSON
         self.sendMessage(str(data))
 

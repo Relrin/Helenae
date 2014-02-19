@@ -1,5 +1,7 @@
 import sys
 
+import commands
+
 from json import dumps, loads
 
 import sqlalchemy
@@ -18,7 +20,7 @@ from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerPr
 # TODO: Define PostgreSQL DB structure
 # TODO: Authentication under PostgreSQL+SQLAlchemy ORM
 # TODO: Errors/Exceptions processing
-
+# TODO: If hacking account or DDoS server or using unsupported commands - ban IP for 1-3 minutes (save IP at DB)
 
 log_file = logfile.LogFile("service.log", ".")
 log.startLogging(log_file)
@@ -27,20 +29,27 @@ engine = sqlalchemy.create_engine('postgresql://user:password@localhost/csan', p
 
 class DFSServerProtocol(WebSocketServerProtocol):
 
-    commands = {"AUTH": "autorization with server",
-                "READ": "read some file from storage",
-                "WRTE": "write file into storage",
-                "DELT": "delete file from storage",
-                "RNME": "rename file",
-                "LIST": "get list of all files from storage with this user",
-                "SYNC": "synchronize all files with storage on the server",
-                "EXIT": "disconnect from server or end session"}
-
+    commands = commands.commands_user
 
     def __init__(self):
-        # get object from connection pool and create session
+        # initialize sessionmaker, which get access to work with DB
         # DONT FORGET use after all "self.sesison.close()"!!!
         self.Session = sessionmaker(bind=engine)
+        self.commands_handlers = self.__initHandlersUser()
+
+    def __initHandlersUser(self):
+        """
+            Initialize handlers for every command
+        """
+        handlers = commands.commands_handlers_server
+        handlers['AUTH'] = self.authorization
+        handlers['READ'] = None
+        handlers['WRTE'] = None
+        handlers['DELT'] = None
+        handlers['RNME'] = None
+        handlers['SYNC'] = None
+        handlers['LIST'] = None
+        return handlers
 
     def authorization(self, data):
         """
@@ -50,23 +59,9 @@ class DFSServerProtocol(WebSocketServerProtocol):
         session = self.Session()
         result = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user']))
         result = result.fetchone()
-        if result is None:
-            data['cmd'] = 'RAUT'
-            data['error'] = 'User not found'
-            log.msg("[AUTH] User=%s not found" % data['user'])
-        else:
-            if result['name'] == data['user']:
-                # correct users info --> real user
-                if result['password'] == data['password']:
-                    data['cmd'] = 'HELP'
-                    data['auth'] = True
-                    log.msg("[AUTH] User=%s successfully logged..." % data['user'])
-                # incorrect password --> fake user
-                else:
-                    data['cmd'] = 'RAUT'
-                    data['error'] = 'Incorrect password. Try again...'
-                    log.msg("[AUTH] Incorrect password for user=%s" % data['user'])
         session.close()
+        data, result_msg = commands.AUTH(result, data)
+        log.msg(result_msg)
         return data
 
     def onMessage(self, payload, isBinary):
@@ -74,25 +69,27 @@ class DFSServerProtocol(WebSocketServerProtocol):
             Processing request from user and send response
         """
         json_data = loads(payload)
+        json_auth = json_data['auth']
+        json_cmd  = json_data['cmd']
+        # add there checking in DB for banned user or not...
         # for none-authorized users
-        if json_data['auth'] == False:
+        if json_auth == False:
             # first action with server --> authorization
-            if json_data['cmd'] == 'AUTH':
-                json_data = self.authorization(json_data)
+            if json_cmd == 'AUTH':
+                json_data = self.commands_handlers['AUTH'](json_data)
         # for authorized users
         else:
-            if json_data['cmd'] == 'READ':
-                pass
-            elif json_data['cmd'] == 'WRTE':
-                pass
-            elif json_data['cmd'] == 'DELT':
-                pass
-            elif json_data['cmd'] == 'RNME':
-                pass
-            elif json_data['cmd'] == 'SYNC':
-                pass
-            elif json_data['cmd'] == 'LIST':
-                pass
+            if json_cmd in commands.commands_user.keys():
+                if self.commands_handlers[json_cmd] is not None:
+                    json_data = self.commands_handlers[json_cmd](json_data)
+                # just send error if not realized
+                else:
+                    json_data['error'] = '%s command is not already realized...' % json_cmd
+            # its not real commands on server --> send error
+            # this guy trying to hacking/DDoS server? also reset auth and set ban for 1-3 minutes
+            else:
+                json_data['auth'] = False
+                json_data['error'] = 'This command is not supported on server...'
         response = dumps(json_data)
         self.sendMessage(str(response))
 
