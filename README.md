@@ -32,7 +32,7 @@ To activate debug output on the server, start it
 
 To run the Python client, do
 
-    python client.py
+    python client_console.py
 
 
 Creating Server Keys and Certificates
