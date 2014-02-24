@@ -2,17 +2,14 @@ import sys
 import os
 import platform
 import getpass
-
-import commands
-
 from json import dumps, loads
-
 from optparse import OptionParser
 
 from twisted.python import log
 from twisted.internet import reactor, ssl
-
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
+
+import commands
 
 # TODO: Create plugins for future commands
 # TODO: Define commands for USER (auth, read/write/sync files, etc.)
@@ -51,8 +48,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Processing for AUTH command
         """
         self.counterAttemptsLogin = 3
-        login, hash_password = self.inputData()
-        data = commands.constructDataClient('AUTH', login, hash_password, False)
+        login, password = self.inputData()
+        data = commands.constructDataClient('AUTH', login, password, False)
         return data
 
     def __EXIT(self, data):
@@ -70,8 +67,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print '\nError: %s' % data['error']
             print 'Attempts left: %d\n' % self.counterAttemptsLogin
             self.counterAttemptsLogin -= 1
-            login, hash_password = self.inputData()
-            data = commands.constructDataClient('AUTH', login, hash_password, False)
+            login, password = self.inputData()
+            data = commands.constructDataClient('AUTH', login, password, False)
         else:
             print '\nTrying to hacking account or DDoS server? I will stop YOU!'
             reactor.stop()
@@ -91,15 +88,14 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
         login = raw_input('Login:')
         password = getpass.getpass('Password:')
-        hash_password = str(hash(password))
-        return login, hash_password
+        return login, password
 
     def onOpen(self):
         """
             Send auth request to server, when create connection
         """
-        login, hash_password = self.inputData()
-        data = dumps({'cmd': 'AUTH', 'user': login, 'password': hash_password, 'auth': False, 'error': ''})
+        login, password = self.inputData()
+        data = dumps({'cmd': 'AUTH', 'user': login, 'password': password, 'auth': False, 'error': ''})
         self.sendMessage(str(data))
 
     def onMessage(self, payload, isBinary):
