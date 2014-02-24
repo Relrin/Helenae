@@ -1,19 +1,17 @@
 import sys
-
-import commands
-
 from json import dumps, loads
 
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-from db.create_db import Users
-
 from twisted.internet import reactor, ssl
 from twisted.python import log, logfile
 from twisted.web.server import Site
 from twisted.web.static import File
-
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
+
+import commands
+from db.tables import Users
+
 
 # TODO: Add logger (from Twisted, not original library)
 # TODO: Create PLUGIN architecture (using twistd)
