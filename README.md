@@ -9,6 +9,7 @@ Using
 - PostgreSQL
 - Twisted
 - Autobahn.ws
+- OpenSSL
 - SQLAlchemy ORM
 - rsync
 
