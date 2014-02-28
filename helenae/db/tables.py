@@ -209,4 +209,3 @@ if __name__ == '__main__':
     result = engine.execute(text("select name, fullname, password from users"))
     for row in result:
         print "name=%s --> fullname=%s --> password=%s" % (row.name, row.fullname, row.password)
-
