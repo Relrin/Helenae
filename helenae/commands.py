@@ -16,7 +16,6 @@ commands_user = {"AUTH": "autorization with server",
 commands_handlers_user   = dict((key, None) for key in commands_user.keys())
 commands_handlers_server = dict((key, None) for key in commands_user.keys() if key not in ('AUTH', 'EXIT'))
 
-
 def constructBasicJSON():
     """
         Create basic JSON for operations
@@ -43,9 +42,9 @@ def constructDataClient(cmd, user, hash_password, auth, error=''):
     return dumps(data)
 
 
-def constructDataFileServer(cmd, user, hash_password, auth, error='', server_info=()):
+def constructInfoFileServer(cmd, user, hash_password, auth, error='', server_info=()):
     """
-        Create JSON for server from File Server
+        Create JSON, which contains useful information about server for client
     """
     data = constructBasicJSON()
     data['cmd'] = cmd
