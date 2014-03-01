@@ -12,7 +12,6 @@ from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerPr
 import commands
 from db.tables import Users
 
-
 # TODO: Add logger (from Twisted, not original library)
 # TODO: Create PLUGIN architecture (using twistd)
 # TODO: Define PostgreSQL DB structure
