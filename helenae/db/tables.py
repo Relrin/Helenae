@@ -14,7 +14,7 @@ Base = declarative_base(metadata=metadata, metaclass=sqlamp.DeclarativeMeta)
 class Users(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True)
+    name = Column(String(25), unique=True)
     fullname = Column(String)
     password = Column(String)
     email = Column(String)
@@ -171,32 +171,32 @@ if __name__ == '__main__':
     # test_server = FileServer('192.168.1.1', 80, 'online')
     # session.add(test_server)
     # session.commit()
-    #
+
     # test_dir = Catalog('test')
     # session.add(test_dir)
     # session.commit()
-    #
+
     # test_file = File('test.txt', '123456.txt', hash('123456.txt'), 1024, 1)
     # session.add(test_file)
     # test_dir.file_id.append(test_file)
     # session.commit()
-    #
+
     # test_m2m = m2m_file_server(chunk_size=0, chunk_number=0)
     # test_m2m.child = test_server
     # test_file.server_id.append(test_m2m)
     # session.commit()
-    #
-    # test_fs = FileSpace('test')
-    # session.add(test_fs)
-    # session.commit()
-    #
-    # test_acctype = AccountType('free', 0.00)
-    # session.add(test_acctype)
-    # session.commit()
-    #
-    # test_group = Group('users', 1101)
-    # session.add(test_group)
-    # session.commit()
+
+    test_fs = FileSpace('test')
+    session.add(test_fs)
+    session.commit()
+    
+    test_acctype = AccountType('free', 0.00)
+    session.add(test_acctype)
+    session.commit()
+    
+    test_group = Group('users', 1101)
+    session.add(test_group)
+    session.commit()
 
     test_user = Users('relrin', 'Valery Savich', hash('123456'), 'some@mail.com', '01.01.2014', 1, 1, 1)
     session.add(test_user)
