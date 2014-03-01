@@ -175,12 +175,15 @@ if __name__ == '__main__':
     # test_dir = Catalog('test')
     # session.add(test_dir)
     # session.commit()
-
+    
+    # test_dir = Catalog('test')
+    # session.add(test_dir)
+    # session.commit()
+    
     # test_file = File('test.txt', '123456.txt', hash('123456.txt'), 1024, 1)
     # session.add(test_file)
     # test_dir.file_id.append(test_file)
     # session.commit()
-
     # test_m2m = m2m_file_server(chunk_size=0, chunk_number=0)
     # test_m2m.child = test_server
     # test_file.server_id.append(test_m2m)
