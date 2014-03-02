@@ -82,11 +82,34 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
                 f.close()
         # read some file
         elif cmd == 'READU_FILE':
+            self.__checkUserCatalog(user_id)
             operation = "REA"
+            try:
+                f = open(file_id, "rb")
+                commentary = f.read()
+            except IOError, argument:
+                status = "E"
+                commentary = argument
+            except Exception, argument:
+                status = "E"
+                commentary = argument
+                raise Exception(argument)
+            finally:
+                f.close()
         # delete file from storage (and in main server, in parallel delete from DB)
         elif cmd == 'DELET_FILE':
+            self.__checkUserCatalog(user_id)
             operation = "DEL"
-        self.sendMessage('[%s][%s] %s' % (operation, status, commentary))
+            try:
+                os.remove(file_id)
+            except IOError, argument:
+                status = "E"
+                commentary = argument
+            except Exception, argument:
+                status = "E"
+                commentary = argument
+                raise Exception(argument)
+        self.sendMessage('[%s][%s]%s' % (operation, status, commentary), isBinary=True)
 
 
 if __name__ == '__main__':
