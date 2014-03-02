@@ -23,13 +23,33 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
         operation_name = CONFIG_DATA['cmd']
         file_id = CONFIG_DATA['file_id']
         src_file = CONFIG_DATA['src_file']
-        with open(src_file, "r") as f:
-            info = f.read()
-        data = '[' + str(user_id) + ':' + str(operation_name) + ':' + str(file_id) + ']' + str(info)
+        data = '[' + str(user_id) + ':' + str(operation_name) + ':' + str(file_id) + ']'
+        if operation_name == 'WRITE_FILE':
+            with open(src_file, "r") as f:
+                info = f.read()
+            data += str(info)
         self.sendMessage(data, isBinary=True)
 
     def onMessage(self, payload, isBinary):
-        print payload
+        cmd = payload[1:4]
+        result_cmd = payload[6]
+        if cmd in ('WRT', 'DEL'):
+            print payload
+        elif cmd == 'REA':
+            if result_cmd == 'C':
+                try:
+                    data = payload[8:]
+                    f = open(CONFIG_DATA['src_file'], "wb")
+                    f.write(data)
+                except IOError, e:
+                    print e
+                except Exception, e:
+                    raise Exception(e)
+                finally:
+                    print payload[:8] + "Successfully!"
+                    f.close()
+            else:
+                print payload
         reactor.stop()
 
 
