@@ -1,17 +1,26 @@
 import os
 import sys
 import json
+from subprocess import Popen, PIPE, STDOUT
 
+from twisted.internet.task import deferLater
 from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
 
-# TODO: Add read/delete operations
 # TODO: Add Twisted logger
 # TODO: Create plugin for fileserver (using twistd)
 # TODO: Thinking about using SSL over my WebSockets message-based protocol (OR using AES algorithm?)
 
+CONFIG_IP = 'localhost'
+CONFIG_PORT = 8888
 CONFIG_TEMPLATE = ''
 CONFIG_DATA = {}
+
+
+def sendPrefences(port):
+    p = Popen(["python", "preferences_sender.py", str(CONFIG_TEMPLATE), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    result = p.communicate()[0]
+
 
 
 class MessageBasedServerProtocol(WebSocketServerProtocol):
@@ -39,6 +48,7 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
             os.chdir(base_dir)
         # init some things
         self.fullpath = path + '/' + base_dir
+        self.status = 'FREE'
 
     def __checkUserCatalog(self, user_id):
         # prepare to working with files...
@@ -61,11 +71,12 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
         """
         user_id, cmd, file_id = payload[:54].replace('[', '').replace(']','').split(':')
         data = payload[54:]
-        operation = "UNK"  # WRT - Write, REA -> Read, DEL -> Delete, UNK -> Unknown
+        operation = "UNK"  # WRT -> Write, REA -> Read, DEL -> Delete, STS -> Status, UNK -> Unknown
         status = "C"       # C -> Complete, E -> Error in operation
         commentary = 'Succesfull!'
         # write file into user storage
         if cmd == 'WRITE_FILE':
+            self.status = 'BUSY'
             self.__checkUserCatalog(user_id)
             operation = "WRT"
             try:
@@ -80,8 +91,10 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
                 raise Exception(argument)
             finally:
                 f.close()
+                self.status = 'FREE'
         # read some file
         elif cmd == 'READU_FILE':
+            self.status = 'BUSY'
             self.__checkUserCatalog(user_id)
             operation = "REA"
             try:
@@ -96,8 +109,10 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
                 raise Exception(argument)
             finally:
                 f.close()
+                self.status = 'FREE'
         # delete file from storage (and in main server, in parallel delete from DB)
         elif cmd == 'DELET_FILE':
+            self.status = 'BUSY'
             self.__checkUserCatalog(user_id)
             operation = "DEL"
             try:
@@ -109,19 +124,37 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
                 status = "E"
                 commentary = argument
                 raise Exception(argument)
+            self.status = 'FREE'
+        elif cmd == 'STATUS_SRV':
+            operation = "STS"
+            commentary = self.status
         self.sendMessage('[%s][%s]%s' % (operation, status, commentary), isBinary=True)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print "using python fileserver_client.py [PATH_TO_config.json_FILE]"
+    if len(sys.argv) < 3:
+        print "using python fileserver_client.py [PATH_TO_config.json_FILE] [PORT]"
     else:
-        # read config file
-        CONFIG_TEMPLATE = sys.argv[1]
-        with open(CONFIG_TEMPLATE, "r") as f:
-            CONFIG_DATA = json.load(f)
+        try:
+            # read config file
+            CONFIG_TEMPLATE = sys.argv[1]
+            with open(CONFIG_TEMPLATE, "r") as f:
+                CONFIG_DATA = json.load(f)
+            # checking IP and PORT
+            CONFIG_PORT = int(sys.argv[2])
+        except ValueError:
+            print 'PLEASE, enter correct information about server...'
+            sys.exit(1)
+        except Exception, e:
+            print e
+            sys.exit(1)
+        if CONFIG_IP == 'localhost':
+            CONFIG_IP = '127.0.0.1'
+        server_addr = "ws://%s:%d" % (CONFIG_IP, CONFIG_PORT)
         # create server
-        factory = WebSocketServerFactory("ws://localhost:9000")
+        factory = WebSocketServerFactory(server_addr)
         factory.protocol = MessageBasedServerProtocol
         listenWS(factory)
+        # create special Deffered, which sending our server prefences (ip and port) to main server
+        d = deferLater(reactor, 0, sendPrefences, CONFIG_PORT)
         reactor.run()

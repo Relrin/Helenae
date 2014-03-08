@@ -2,10 +2,12 @@ import sys
 import os
 import platform
 import getpass
+from subprocess import Popen, PIPE, STDOUT
 from json import dumps, loads
 from optparse import OptionParser
 
 from twisted.python import log
+from twisted.internet.task import deferLater
 from twisted.internet import reactor, ssl
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
@@ -14,6 +16,10 @@ import commands
 # TODO: Create plugins for future commands
 # TODO: Define commands for USER (auth, read/write/sync files, etc.)
 # TODO: Add methods/commands into ServerClientSSL
+
+def SendInfoToFileServer(json, ip, port):
+    p = Popen(["python", "./fileserver/fileserver_client.py", str(json), str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    result = p.communicate()[0]
 
 
 class DFSClientProtocol(WebSocketClientProtocol):
@@ -32,7 +38,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         # basic commands
         handlers['AUTH'] = self.__AUTH
         handlers['READ'] = None
-        handlers['WRTE'] = None
+        handlers['WRTE'] = self.__WRTE
         handlers['DELT'] = None
         handlers['RNME'] = None
         handlers['SYNC'] = None
@@ -50,6 +56,13 @@ class DFSClientProtocol(WebSocketClientProtocol):
         self.counterAttemptsLogin = 3
         login, password = self.inputData()
         data = commands.constructDataClient('AUTH', login, password, False)
+        return data
+
+    def __WRTE(self, data):
+        """
+            Processing for WRTE (write file) command
+        """
+        data = commands.constructDataClient('WRTE', data['user'], data['password'], True)
         return data
 
     def __EXIT(self, data):
@@ -155,4 +168,5 @@ if __name__ == '__main__':
         contextFactory = None
 
     connectWS(factory, contextFactory)
+    #d = deferLater(reactor, 0, SendInfoToFileServer, './fileserver/fsc.json', '127.0.0.1', '8888')
     reactor.run()
