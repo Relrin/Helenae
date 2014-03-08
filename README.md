@@ -18,7 +18,7 @@ Running
 
 Run the server by doing
 
-    python server.py
+    python server.py 9000
 
 and open
 
@@ -28,7 +28,7 @@ in your browser.
 
 To activate debug output on the server, start it
 
-    python server.py debug
+    python server.py debug 9000
 
 To run the Python client, do
 
