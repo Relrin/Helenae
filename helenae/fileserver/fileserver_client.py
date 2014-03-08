@@ -54,15 +54,24 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print "using python fileserver_client.py [PATH_TO_config.json_FILE]"
+    if len(sys.argv) < 4:
+        print "using python fileserver_client.py [PATH_TO_config.json_FILE] [IP] [PORT]"
     else:
-        # read config file
-        CONFIG_TEMPLATE = sys.argv[1]
-        with open(CONFIG_TEMPLATE, "r") as f:
-            CONFIG_DATA = json.load(f)
+        try:
+            CONFIG_TEMPLATE = sys.argv[1]
+            with open(CONFIG_TEMPLATE, "r") as f:
+                CONFIG_DATA = json.load(f)
+            CONFIG_IP = sys.argv[2]
+            CONFIG_PORT = int(sys.argv[3])
+        except ValueError:
+            print 'PLEASE, enter correct information about server...'
+            sys.exit(1)
+        except Exception, e:
+            print e
+            sys.exit(1)
+        server_addr = "ws://%s:%d" % (CONFIG_IP, CONFIG_PORT)
         # connection to server
-        factory = WebSocketClientFactory("ws://localhost:9000")
+        factory = WebSocketClientFactory(server_addr)
         factory.protocol = MessageBasedClientProtocol
         connectWS(factory)
         reactor.run()
