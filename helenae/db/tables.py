@@ -104,18 +104,11 @@ class Catalog(Base):
         return "<Catalog('%s','%s','%s')>" % (self.directory_name, self.last_modified, self.public_folder)
 
 
-class m2m_file_server(Base):
-    __tablename__ = 'm2m_file_server'
-    id = Column(Integer, primary_key=True)
-    chunk_number = Column(Integer, nullable=False)
-    chunk_size = Column(Integer, nullable=False)
-    file_id = Column(Integer, ForeignKey('file.id'), index=True)
-    server_id = Column(Integer, ForeignKey('fileserver.id'), index=True)
-    child = relationship("FileServer")
-
-    def __repr__(self):
-        return "<m2m_File_Server('%d','%d','%d','%d','%s')>" % (self.chunk_number, self.chunk_size, self.file_id,
-                                                                self.server_id, self.child)
+association_table = Table('m2m_file_server', Base.metadata,
+                          Column('id', Integer, primary_key=True),
+                          Column('file_id', Integer, ForeignKey('file.id')),
+                          Column('fileserver_id', Integer, ForeignKey('fileserver.id'))
+                          )
 
 
 class File(Base):
@@ -124,15 +117,17 @@ class File(Base):
     original_name = Column(String, nullable=False)
     server_name = Column(String, nullable=False)
     file_hash = Column(String, nullable=False)
-    filesize = Column(BigInteger)
+    chunk_size = Column(Integer, nullable=False)
+    chunk_number = Column(Integer, nullable=False)
     catalog_id = Column(Integer, ForeignKey("catalog.id"))
-    server_id = relationship("m2m_file_server")
+    server_id = relationship("FileServer", secondary=association_table)
 
-    def __init__(self, orig_name, serv_name, file_hash, filesize, catalog_id):
+    def __init__(self, orig_name, serv_name, file_hash, chunk_size, chunk_number, catalog_id):
         self.original_name = orig_name
         self.server_name = serv_name
         self.file_hash = file_hash
-        self.filesize = filesize
+        self.chunk_size = chunk_size
+        self.chunk_number = chunk_number
         self.catalog_id = catalog_id
 
     def __repr__(self):
@@ -155,60 +150,3 @@ class FileServer(Base):
 
     def __repr__(self):
         return "<FileServer('%s','%d','%s','%s')>" % (self.ip, self.port, self.status, self.last_online)
-
-
-if __name__ == '__main__':
-    from sqlalchemy import text
-    from sqlalchemy.orm import sessionmaker
-
-    # defined tables at this file are created in selected DB
-    Base.metadata.create_all(engine)
-
-    # insert test data
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    # test_server = FileServer('192.168.1.1', 80, 'online')
-    # session.add(test_server)
-    # session.commit()
-
-    # test_dir = Catalog('test')
-    # session.add(test_dir)
-    # session.commit()
-    
-    # test_dir = Catalog('test')
-    # session.add(test_dir)
-    # session.commit()
-    
-    # test_file = File('test.txt', '123456.txt', hash('123456.txt'), 1024, 1)
-    # session.add(test_file)
-    # test_dir.file_id.append(test_file)
-    # session.commit()
-    # test_m2m = m2m_file_server(chunk_size=0, chunk_number=0)
-    # test_m2m.child = test_server
-    # test_file.server_id.append(test_m2m)
-    # session.commit()
-
-    test_fs = FileSpace('test')
-    session.add(test_fs)
-    session.commit()
-    
-    test_acctype = AccountType('free', 0.00)
-    session.add(test_acctype)
-    session.commit()
-    
-    test_group = Group('users', 1101)
-    session.add(test_group)
-    session.commit()
-
-    test_user = Users('relrin', 'Valery Savich', hash('123456'), 'some@mail.com', '01.01.2014', 1, 1, 1)
-    session.add(test_user)
-    session.commit()
-
-    session.close()
-
-    # test query
-    connection = engine.connect()
-    result = engine.execute(text("select name, fullname, password from users"))
-    for row in result:
-        print "name=%s --> fullname=%s --> password=%s" % (row.name, row.fullname, row.password)
