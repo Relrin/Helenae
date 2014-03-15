@@ -1,4 +1,5 @@
 from optparse import OptionParser
+from hashlib import sha256
 
 import sqlalchemy.exc
 from sqlalchemy import text
@@ -28,7 +29,7 @@ def initialize_db():
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    test_dir = Catalog('test')
+    test_dir = Catalog('relrin_main')
     session.add(test_dir)
     session.commit()
 
@@ -37,26 +38,39 @@ def initialize_db():
     #session.add(test_file)
     #session.commit()
 
-    test_fs = FileSpace('test')
+    test_fs = FileSpace('relrin_fs', test_dir)
     session.add(test_fs)
     session.commit()
 
-    test_acctype = AccountType('free', 0.00)
-    session.add(test_acctype)
+    free_acct = AccountType('free', 0.00)
+    business_acct = AccountType('business', 100.00)
+    corporate_acct = AccountType('corporate', 500.00)
+    session.add_all([free_acct, business_acct, corporate_acct])
     session.commit()
 
-    test_group = Group('users', 1101)
-    session.add(test_group)
+    # bits in permissions:
+    # [0] - full control under system
+    # [1] - full control under users
+    # [2] - create directories
+    # [3] - rename
+    # [4] - delete
+    # [5] - write
+    # [6] - read
+    anonymous_gr = Group('anonymous', 1000000)
+    users_gr = Group('users', 1111100)
+    admins_gr = Group('admins', 1111110)
+    root_gr = Group('root', 1111111)
+    session.add_all([anonymous_gr, users_gr, admins_gr, root_gr])
     session.commit()
 
-    test_user = Users('relrin', 'Valery Savich', hash('123456'), 'some@mail.com', '01.01.2014', 1, 1, 1)
+    test_user = Users('relrin', 'Valery Savich', str(sha256('123456').hexdigest()), 'some@mail.com', '01.01.2015', 1, 2, 1)
     session.add(test_user)
     session.commit()
 
     session.close()
     print "Insertion data has complete!"
 
-    print "Test query: Getting data from [Users] table\n"
+    print "\nTest query: Getting data from [Users] table..."
     connection = engine.connect()
     result = engine.execute(text("select name, fullname, password from users"))
     for row in result:
