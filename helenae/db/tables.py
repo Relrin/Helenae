@@ -2,7 +2,7 @@ from time import gmtime, strftime
 
 import sqlamp
 from sqlalchemy import create_engine, MetaData
-from sqlalchemy import Integer, DateTime, Float, BigInteger, Boolean, String, Column, ForeignKey, Table
+from sqlalchemy import Integer, DateTime, Float, Boolean, String, Column, ForeignKey, Table
 from sqlalchemy.orm import relationship, relation
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -74,10 +74,12 @@ class FileSpace(Base):
     id = Column(Integer, primary_key=True)
     storage_name = Column(String, nullable=False, unique=True)
     created_time = Column(DateTime, nullable=False)
+    catalog_id = relationship("Catalog")
 
-    def __init__(self, name):
+    def __init__(self, name, catalog):
         self.storage_name = name
         self.created_time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
+        self.catalog_id.append(catalog)
 
     def __repr__(self):
         return "<FileSpace('%s','%s')>" % (self.name, self.created_time)
@@ -87,12 +89,13 @@ class Catalog(Base):
     __tablename__ = 'catalog'
     __mp_manager__ = 'mp'
     id = Column(Integer, primary_key=True)
-    directory_name = Column(String, nullable=False)
+    directory_name = Column(String, nullable=False, unique=True)
     last_modified = Column(DateTime, nullable=False)
     public_folder = Column(Boolean, nullable=False)
     file_id = relationship("File")
     parent_id = Column(ForeignKey('catalog.id'), index=True)
     parent = relation("Catalog", remote_side=[id])
+    fs_id = Column(Integer, ForeignKey('filespace.id'))
 
     def __init__(self, dir_name, public_folder=False, parent=None):
         self.directory_name = dir_name

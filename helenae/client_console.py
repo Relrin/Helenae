@@ -15,7 +15,7 @@ import commands
 
 # TODO: Create plugins for future commands
 # TODO: Define commands for USER (auth, read/write/sync files, etc.)
-# TODO: Add methods/commands into ServerClientSSL
+# TODO: Add methods/commands into DFSClientProtocol
 
 def SendInfoToFileServer(json, ip, port):
     p = Popen(["python", "./fileserver/fileserver_client.py", str(json), str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
@@ -45,9 +45,18 @@ class DFSClientProtocol(WebSocketClientProtocol):
         handlers['LIST'] = None
         handlers['EXIT'] = self.__EXIT
         # errors, bans, etc.
+        handlers['CREG'] = self.__CREG
+        handlers['RREG'] = self.__RREG
         handlers['RAUT'] = self.__RAUT
         handlers['BANN'] = None
         return handlers
+
+    def __CREG(self):
+        """
+            Processing for CREG command
+        """
+        print "Registration has complete! Now you can connecting to DFS..."
+        reactor.stop()
 
     def __AUTH(self, data):
         """
@@ -71,6 +80,16 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
         print 'Disconnected from server...'
         reactor.stop()
+
+    def __RREG(self, data):
+        """
+            Processing for RREG command (when error on creating new account)
+        """
+        print data['error']
+        login, password, fullname, email = self.inputDataNewUser()
+        data = dumps({'cmd': 'REGS', 'user': login, 'password': password, 'auth': False, 'error': '',
+                      'email': email, 'fullname': fullname})
+        return data
 
     def __RAUT(self, data):
         """
@@ -103,13 +122,43 @@ class DFSClientProtocol(WebSocketClientProtocol):
         password = getpass.getpass('Password:')
         return login, password
 
+    def inputDataNewUser(self):
+        """
+            Input all data about new registered user
+        """
+        login = raw_input('Login:')
+        password = getpass.getpass('Password:')
+        fullname = raw_input('Full name:')
+        email = raw_input('E-mail:')
+        return login, password, fullname, email
+
     def onOpen(self):
         """
             Send auth request to server, when create connection
         """
-        login, password = self.inputData()
-        data = dumps({'cmd': 'AUTH', 'user': login, 'password': password, 'auth': False, 'error': ''})
-        self.sendMessage(str(data))
+        cmd = ''
+        while cmd not in ('EXIT', 'REGS', 'AUTH'):
+            if platform.system() == "Linux":
+                os.system('clear')
+            else:
+                os.system('cls')
+            print "Available commands: "
+            print "AUTH \t Authenticate user"
+            print "REGS \t Register new user"
+            print "EXIT \t Exit from program"
+            cmd = raw_input('Command: ').upper()
+        if cmd == 'REGS':
+            login, password, fullname, email = self.inputDataNewUser()
+            data = dumps({'cmd': 'REGS', 'user': login, 'password': password, 'auth': False, 'error': '',
+                          'email': email, 'fullname': fullname})
+            self.sendMessage(str(data))
+        if cmd == 'AUTH':
+            login, password = self.inputData()
+            data = dumps({'cmd': 'AUTH', 'user': login, 'password': password, 'auth': False, 'error': ''})
+            self.sendMessage(str(data))
+        if cmd == 'EXIT':
+            reactor.stop()
+
 
     def onMessage(self, payload, isBinary):
         """
@@ -135,6 +184,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 # its Windows
                 os.system('cls')
             # get user a opportunity to working with server/files/etc.
+            print "Current user: %s" % (data['user'])
             self.mainMenu()
             cmd = ''
             while cmd not in self.commands.keys():

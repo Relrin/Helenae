@@ -1,5 +1,8 @@
 import sys
+import datetime
 from json import dumps, loads
+from hashlib import sha256
+from time import gmtime, strftime
 
 import sqlalchemy
 import sqlalchemy.exc
@@ -11,14 +14,11 @@ from twisted.web.static import File
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
 
 import commands
-from db.tables import Users, FileServer
+from db.tables import Users, FileServer, FileSpace, Catalog
 
 # TODO: Add logger (from Twisted, not original library)
 # TODO: Create PLUGIN architecture (using twistd)
-# TODO: Define PostgreSQL DB structure
-# TODO: Authentication under PostgreSQL+SQLAlchemy ORM
 # TODO: Errors/Exceptions processing
-# TODO: If hacking account or DDoS server or using unsupported commands - ban IP for 1-3 minutes (save IP at DB)
 
 log_file = logfile.LogFile("service.log", ".")
 log.startLogging(log_file)
@@ -40,6 +40,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
             Initialize handlers for every command
         """
         handlers = commands.commands_handlers_server
+        handlers['REGS'] = self.registration
         handlers['FSRV'] = self.fileserver_auth
         handlers['AUTH'] = self.authorization
         handlers['READ'] = None
@@ -49,6 +50,64 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['SYNC'] = None
         handlers['LIST'] = None
         return handlers
+
+    def registration(self, data):
+        log.msg("[REGS] New user=%s: want to create account" % (data['user']))
+        try:
+            session = self.Session()
+            checker = session.execute(sqlalchemy.select([Users])
+                                                .where(Users.name == data['user'])
+                                     )
+            checker = checker.fetchall()
+            if len(checker) == 0:
+                if len(data['user']) < 3:
+                    raise ValueError('Length of username was been more than 3 symbols!')
+                elif len(data['password']) < 6:
+                    raise ValueError('Length of password was been more than 6 symbols!')
+                elif len(data['fullname']) == 0:
+                    raise ValueError("Full name can't be empty!")
+
+                log.msg("[REGS] Creating special main catalog for new user...")
+                catalog_name = str(data['user'] + "_main_" + strftime("%d%m%Y", gmtime()))
+                new_dir = Catalog(catalog_name)
+                session.add(new_dir)
+                session.commit()
+
+                log.msg("[REGS] Creating file space for new user...")
+                fs_name = str(data['user'] + "fs_" + strftime("%d%m%Y", gmtime()))
+                new_fs = FileSpace(fs_name, new_dir)
+                session.add(new_fs)
+                session.commit()
+
+                log.msg("[REGS] Add new user into DB...")
+                fs = session.execute(sqlalchemy.select([FileSpace])
+                                                  .where(FileSpace.storage_name == fs_name)
+                                    )
+                fs = fs.fetchone()
+                time_is = datetime.datetime.strptime(strftime("%d.%m.%Y", gmtime()), "%d.%m.%Y").date()
+                time_is = time_is + datetime.timedelta(days=365)
+                date_max = time_is.strftime("%d.%m.%Y")
+                new_user = Users(data['user'], data['fullname'], str(sha256(data['password']).hexdigest()), data['email'], date_max, 1, 2, fs.id)
+                session.add(new_user)
+                session.commit()
+                data['error'] = ''
+                data['auth'] = True
+                data['cmd'] = 'CREG'
+                log.msg("[REGS] All operations successfully completed!")
+            else:
+                log.msg("[REGS] User with ID=%s already contains at DB" % (data['user']))
+                data['error'] = 'This user already exists! Please, check another login...'
+                data['cmd'] = 'RREG'
+        except ValueError, exc:
+            data['error'] = exc.message
+            data['cmd'] = 'RREG'
+        except sqlalchemy.exc.ArgumentError, e:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+        return data
 
     def fileserver_auth(self, data):
         connection_data, port = data
@@ -60,7 +119,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                                                 .where(FileServer.ip == connection_data.host and FileServer.port == port)
                                      )
             checker = checker.fetchall()
-            if len(checker) == 0 :
+            if len(checker) == 0:
                 log.msg("[FSRV] Successfully added!")
                 new_fs = FileServer(connection_data.host, port, 'ONLINE')
                 session.add(new_fs)
@@ -115,6 +174,8 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 # first action with server --> authorization
                 if json_cmd == 'AUTH':
                     json_data = self.commands_handlers['AUTH'](json_data)
+                if json_cmd == 'REGS':
+                    json_data = self.commands_handlers['REGS'](json_data)
             # for authorized users
             else:
                 if json_cmd in commands.commands_user.keys():
