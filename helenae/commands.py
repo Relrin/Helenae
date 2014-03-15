@@ -2,6 +2,7 @@
     This module contains basics commands, which [user/file server] can using
 """
 from json import dumps
+from hashlib import sha256
 
 # available commands and handlers
 commands_user = {"AUTH": "autorization with server",
@@ -66,7 +67,7 @@ def AUTH(result, data):
     else:
         if result['name'] == data['user']:
             # correct users info --> real user
-            hash_psw = hash(data['password'])
+            hash_psw = str(sha256(data['password']).hexdigest())
             if result['password'] == str(hash_psw):
                 data['auth'] = True
             # incorrect password --> fake user
