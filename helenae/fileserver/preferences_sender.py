@@ -22,12 +22,12 @@ if __name__ == '__main__':
     if len(sys.argv) < 3:
         print "using python fileserver_client.py [PATH_TO_config.json_FILE] [PORT_FS]"
     else:
-        # read config file
-        CONFIG_TEMPLATE = sys.argv[1]
-        with open(CONFIG_TEMPLATE, "r") as f:
-            CONFIG_DATA = load(f)
-        # checking IP and PORT
         try:
+            # read config file
+            CONFIG_TEMPLATE = sys.argv[1]
+            with open(CONFIG_TEMPLATE, "r") as f:
+                CONFIG_DATA = load(f)
+            # checking IP and PORT
             CONFIG_PORT = int(sys.argv[2])
         except ValueError:
             print 'PLEASE, enter correct information about server...'
