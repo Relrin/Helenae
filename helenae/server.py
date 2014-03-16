@@ -3,11 +3,14 @@ import datetime
 from json import dumps, loads
 from hashlib import sha256
 from time import gmtime, strftime
+from subprocess import Popen, PIPE, STDOUT
 
 import sqlalchemy
 import sqlalchemy.exc
+from sqlalchemy import and_
 from sqlalchemy.orm import sessionmaker
 from twisted.internet import reactor, ssl
+from twisted.internet.task import deferLater
 from twisted.python import log, logfile
 from twisted.web.server import Site
 from twisted.web.static import File
@@ -15,14 +18,25 @@ from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerPr
 
 import commands
 from db.tables import Users, FileServer, FileSpace, Catalog
+from balancer import Balancer
 
-# TODO: Add logger (from Twisted, not original library)
 # TODO: Create PLUGIN architecture (using twistd)
 # TODO: Errors/Exceptions processing
 
+POLL_TIME = 300    # polling file servers every 5 min
 log_file = logfile.LogFile("service.log", ".")
 log.startLogging(log_file)
 engine = sqlalchemy.create_engine('postgresql://user:password@localhost/csan', pool_size=20, max_overflow=0)
+
+
+def checkServerStatus(ip, port):
+    """
+        File server status checker
+        After communication return result as string "IP|PORT|STATUS"
+    """
+    p = Popen(["python", "./fileserver/statuschecker.py", str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    result = p.communicate()[0].replace('\n','')
+    return result.split('|')
 
 
 class DFSServerProtocol(WebSocketServerProtocol):
@@ -32,8 +46,49 @@ class DFSServerProtocol(WebSocketServerProtocol):
     def __init__(self):
         # initialize sessionmaker, which get access to work with DB
         # DONT FORGET use after all "self.sesison.close()"!!!
+        self.lstFS = []
         self.Session = sessionmaker(bind=engine)
         self.commands_handlers = self.__initHandlersUser()
+        self.balancer = Balancer()
+        d = deferLater(reactor, 5, self.__pollServers)
+
+    def __updateStatusDB(self):
+        """
+            Updating status field in DB for every available server
+        """
+        dump = self.lstFS
+        session = self.Session()
+        for server in dump:
+            ip = server[0]
+            port = server[1]
+            status = server[2]
+            session.query(FileServer).filter_by(ip=ip, port=port).update({"status": unicode(status)})
+            session.commit()
+        session.close()
+
+    def __pollServers(self):
+        """
+            Polling all available file servers
+        """
+        def getResult(result):
+            self.lstFS.append(result)
+
+        poll_session = self.Session()
+        servers = poll_session.execute(sqlalchemy.select([FileServer]))
+        servers = servers.fetchall()
+        poll_session.close()
+        for server in servers:
+            dlGetStatus = deferLater(reactor, 0, checkServerStatus, server.ip, server.port).addCallback(getResult)
+        dlUpdateDB = deferLater(reactor, 0, self.__updateStatusDB)
+        dlUpdate = deferLater(reactor, 5, self.__updateFileServerList)
+
+    def __updateFileServerList(self):
+        """
+            Periodical update data about servers in balancer
+        """
+        self.balancer.updateFileServerList(self.lstFS)
+        self.lstFS = []
+        d = deferLater(reactor, POLL_TIME, self.__pollServers)
 
     def __initHandlersUser(self):
         """
@@ -116,7 +171,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         try:
             session = self.Session()
             checker = session.execute(sqlalchemy.select([FileServer])
-                                                .where(FileServer.ip == connection_data.host and FileServer.port == port)
+                                                .where(and_(FileServer.ip == connection_data.host, FileServer.port == port))
                                      )
             checker = checker.fetchall()
             if len(checker) == 0:

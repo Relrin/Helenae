@@ -48,7 +48,7 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
             os.chdir(base_dir)
         # init some things
         self.fullpath = path + '/' + base_dir
-        self.status = 'FREE'
+        self.status = 'ONLINE'
 
     def __checkUserCatalog(self, user_id):
         # prepare to working with files...
@@ -91,7 +91,7 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
                 raise Exception(argument)
             finally:
                 f.close()
-                self.status = 'FREE'
+                self.status = 'ONLINE'
         # read some file
         elif cmd == 'READU_FILE':
             self.status = 'BUSY'
@@ -109,7 +109,7 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
                 raise Exception(argument)
             finally:
                 f.close()
-                self.status = 'FREE'
+                self.status = 'ONLINE'
         # delete file from storage (and in main server, in parallel delete from DB)
         elif cmd == 'DELET_FILE':
             self.status = 'BUSY'
@@ -124,7 +124,7 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
                 status = "E"
                 commentary = argument
                 raise Exception(argument)
-            self.status = 'FREE'
+            self.status = 'ONLINE'
         elif cmd == 'STATUS_SRV':
             operation = "STS"
             commentary = self.status
