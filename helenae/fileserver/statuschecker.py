@@ -9,7 +9,7 @@ CONFIG_PORT = 9000
 
 
 def isOffline(status):
-    print status
+    print '%s|%d|%s' % (CONFIG_IP, CONFIG_PORT, status)
 
 
 class StatusCheckerProtocol(WebSocketClientProtocol):
@@ -27,7 +27,7 @@ class StatusCheckerProtocol(WebSocketClientProtocol):
         cmd = payload[1:4]
         result_cmd = payload[6]
         data = payload[8:]
-        print data
+        print '%s|%d|%s' % (CONFIG_IP, CONFIG_PORT, data)
         reactor.stop()
 
 
