@@ -63,7 +63,8 @@ def initialize_db():
     session.add_all([anonymous_gr, users_gr, admins_gr, root_gr])
     session.commit()
 
-    test_user = Users('relrin', 'Valery Savich', str(sha256('123456').hexdigest()), 'some@mail.com', '01.01.2015', 1, 2, 1)
+    hash_pswd = str(sha256('123456'+'1').hexdigest())
+    test_user = Users('relrin', 'Valery Savich', hash_pswd, 'some@mail.com', '01.01.2015', 1, 2, 1)
     session.add(test_user)
     session.commit()
 
