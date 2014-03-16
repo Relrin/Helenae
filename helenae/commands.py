@@ -67,7 +67,7 @@ def AUTH(result, data):
     else:
         if result['name'] == data['user']:
             # correct users info --> real user
-            hash_psw = str(sha256(data['password']).hexdigest())
+            hash_psw = str(sha256(data['password']+str(result['id'])).hexdigest())
             if result['password'] == str(hash_psw):
                 data['auth'] = True
             # incorrect password --> fake user
