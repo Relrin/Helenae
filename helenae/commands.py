@@ -26,7 +26,7 @@ def constructBasicJSON():
     data['user'] = None
     data['password'] = None
     data['auth'] = None
-    data['error'] = None
+    data['error'] = []
     return data
 
 
@@ -39,21 +39,25 @@ def constructDataClient(cmd, user, hash_password, auth, error=''):
     data['user'] = user
     data['password'] = hash_password
     data['auth'] = auth
-    data['error'] = error
+    if error:
+        data['error'].append(error)
     return dumps(data)
 
 
-def constructInfoFileServer(cmd, user, hash_password, auth, error='', server_info=()):
+def constructFileDataByClient(cmd, user, hash_password, auth, file_path, file_size, file_hash, error=''):
     """
-        Create JSON, which contains useful information about server for client
+        Create JSON for WRTE, DELT, READ operations
     """
     data = constructBasicJSON()
     data['cmd'] = cmd
     data['user'] = user
     data['password'] = hash_password
     data['auth'] = auth
-    data['error'] = error
-    data['server'] = server_info
+    data['file_path'] = file_path
+    data['file_hash'] = file_hash
+    data['file_size'] = file_size
+    if error:
+        data['error'].append(error)
     return dumps(data)
 
 
@@ -62,7 +66,7 @@ def AUTH(result, data):
     # user not found at DB
     if result is None:
         data['cmd'] = 'RAUT'
-        data['error'] = 'User not found'
+        data['error'].append('\nWARNING: User not found')
         error_msg = "[AUTH] User=%s not found" % data['user']
     else:
         if result['name'] == data['user']:
@@ -73,6 +77,6 @@ def AUTH(result, data):
             # incorrect password --> fake user
             else:
                 data['cmd'] = 'RAUT'
-                data['error'] = 'Incorrect password. Try again...'
+                data['error'].append('\nERROR: Incorrect password. Try again...')
                 error_msg = "[AUTH] Incorrect password for user=%s" % data['user']
     return data, error_msg

@@ -134,7 +134,7 @@ class File(Base):
         self.catalog_id = catalog_id
 
     def __repr__(self):
-        return "<File('%s','%s','%s','%d')>" % (self.original_name, self.server_name, self.file_hash, self.filesize)
+        return "<File('%s','%s','%s','%d')>" % (self.original_name, self.server_name, self.file_hash, self.chunk_size)
 
 
 class FileServer(Base):

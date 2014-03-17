@@ -33,10 +33,10 @@ def initialize_db():
     session.add(test_dir)
     session.commit()
 
-    #test_file = File('test.txt', '123456.txt', hash('123456.txt'), 1024, 0, 1)
-    #test_file.server_id.append(test_server)
-    #session.add(test_file)
-    #session.commit()
+    # test_file = File('test.txt', '123456.txt', hash('123456.txt'), 1024, 0, 1)
+    # test_file.server_id.append(test_server)
+    # session.add(test_file)
+    # session.commit()
 
     test_fs = FileSpace('relrin_fs', test_dir)
     session.add(test_fs)
