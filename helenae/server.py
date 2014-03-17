@@ -7,7 +7,7 @@ from subprocess import Popen, PIPE, STDOUT
 
 import sqlalchemy
 import sqlalchemy.exc
-from sqlalchemy import and_
+from sqlalchemy import and_, func, asc
 from sqlalchemy.orm import sessionmaker
 from twisted.internet import reactor, ssl
 from twisted.internet.task import deferLater
@@ -17,6 +17,7 @@ from twisted.web.static import File
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
 
 import commands
+from db.tables import File as FileTable
 from db.tables import Users, FileServer, FileSpace, Catalog
 from balancer import Balancer
 
@@ -62,7 +63,10 @@ class DFSServerProtocol(WebSocketServerProtocol):
             ip = server[0]
             port = server[1]
             status = server[2]
-            session.query(FileServer).filter_by(ip=ip, port=port).update({"status": unicode(status)})
+            dict_status = {"status": unicode(status)}
+            if status == 'ONLINE':
+                dict_status["last_online"] = strftime("%Y-%m-%d %H:%M:%S", gmtime())
+            session.query(FileServer).filter_by(ip=ip, port=port).update(dict_status)
             session.commit()
         session.close()
 
@@ -99,7 +103,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['FSRV'] = self.fileserver_auth
         handlers['AUTH'] = self.authorization
         handlers['READ'] = None
-        handlers['WRTE'] = None
+        handlers['WRTE'] = self.write_file
         handlers['DELT'] = None
         handlers['RNME'] = None
         handlers['SYNC'] = None
@@ -145,16 +149,16 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 new_user = Users(data['user'], data['fullname'], str(sha256(data['password']).hexdigest()), data['email'], date_max, 1, 2, fs.id)
                 session.add(new_user)
                 session.commit()
-                data['error'] = ''
+                data['error'] = []
                 data['auth'] = True
                 data['cmd'] = 'CREG'
                 log.msg("[REGS] All operations successfully completed!")
             else:
                 log.msg("[REGS] User with ID=%s already contains at DB" % (data['user']))
-                data['error'] = 'This user already exists! Please, check another login...'
+                data['error'].append('ERROR: This user already exists! Please, check another login...')
                 data['cmd'] = 'RREG'
         except ValueError, exc:
-            data['error'] = exc.message
+            data['error'].append('ERROR: %s' % exc.message)
             data['cmd'] = 'RREG'
         except sqlalchemy.exc.ArgumentError, e:
             log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
@@ -210,6 +214,60 @@ class DFSServerProtocol(WebSocketServerProtocol):
             session.close()
         return data
 
+    def write_file(self, data):
+        """
+            Checking user with DB
+        """
+        log.msg("[WRTE] User=%s trying to write file..." % data['user'])
+        try:
+            session = self.Session()
+            server = self.balancer.getFileServer(data['cmd'], data['file_hash'])
+            if server is None:
+                msg = "ERROR: Can't write now your file: servers in offline. Try later..."
+                data['cmd'] = 'AUTH'
+                data['error'].append(msg)
+                log.msg(log.msg("[WRTE] %s..." % msg))
+            else:
+                # get info from DB
+                user_db = session.execute(sqlalchemy.select([Users])
+                                                    .where(Users.name == data['user'])
+                                          ).fetchone()
+                fs = session.execute(sqlalchemy.select([FileSpace])
+                                               .where(FileSpace.id == user_db.filespace_id)
+                                     ).fetchone()
+                catalog = session.execute(sqlalchemy.select([Catalog])
+                                                    .where(Catalog.fs_id == fs.id)
+                                                    .order_by(asc(Catalog.id))
+                                          ).fetchone()
+                server_ip = str(server[0])
+                port = int(server[1])
+                fileserver = session.query(FileServer).filter_by(ip=server_ip, port=port).first()
+                cnt_files = session.execute(func.count(FileTable.id)).fetchone()[0] + 1
+                # processing data
+                original_filename = data['file_path'].split('/')[-1]
+                filename, type_file = original_filename.split('.')
+                user_id = 'u' + str(user_db.id).rjust(14, '0')
+                file_id = str(cnt_files).rjust(24-len(type_file), '0') + '.' + type_file
+                data['server'] = server
+                data['json'] = ('WRITE_FILE', user_id, file_id, data['file_path'])
+                # write record into DB
+                new_file = FileTable(original_filename, file_id, data['file_hash'], data['file_size'], 0, catalog.id)
+                new_file.server_id.append(fileserver)
+                session.add(new_file)
+                session.commit()
+                log.msg(log.msg("[WRTE] Operation with DB and User=%s has complete..." % data['user']))
+                data['cmd'] = 'COWF'
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            del data['file_path']
+            del data['file_hash']
+            del data['file_size']
+            session.close()
+        return data
+
     def onMessage(self, payload, isBinary):
         """
             Processing request from user and send response
@@ -238,12 +296,12 @@ class DFSServerProtocol(WebSocketServerProtocol):
                         json_data = self.commands_handlers[json_cmd](json_data)
                     # just send error if not realized
                     else:
-                        json_data['error'] = '%s command is not already realized...' % json_cmd
+                        json_data['error'].append('ERROR: %s command is not already realized...' % json_cmd)
                 # its not real commands on server --> send error
                 # this guy trying to hacking/DDoS server? also reset auth and set ban for 1-3 minutes
                 else:
                     json_data['auth'] = False
-                    json_data['error'] = 'This command is not supported on server...'
+                    json_data['error'].append('ERROR: This command is not supported on server...')
             response = dumps(json_data)
         self.sendMessage(str(response))
 
