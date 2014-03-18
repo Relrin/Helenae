@@ -1,6 +1,6 @@
 import json
 import sys
-import commands
+import os
 
 from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
@@ -50,6 +50,7 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
                     f.close()
             else:
                 print payload
+        os.remove(CONFIG_TEMPLATE)
         reactor.stop()
 
 
