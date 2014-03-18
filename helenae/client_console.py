@@ -18,8 +18,6 @@ import commands
 # TODO: Define commands for USER (auth, read/write/sync files, etc.)
 # TODO: Add methods/commands into DFSClientProtocol
 # TODO: Add response after write/read/delete/etc.
-# TODO: Create special folder for configs
-# TODO: Crypting json values!!!
 
 def md5_for_file(file_path, block_size=8192):
     """
@@ -61,10 +59,11 @@ class DFSClientProtocol(WebSocketClientProtocol):
         handlers['DELT'] = None
         handlers['RNME'] = None
         handlers['SYNC'] = None
-        handlers['LIST'] = None
+        handlers['LIST'] = self.__LIST
         handlers['EXIT'] = self.__EXIT
         # continues operations...
         handlers['COWF'] = self.__COWF
+        handlers['CLST'] = self.__CLST
         # errors, bans, etc.
         handlers['CREG'] = self.__CREG
         handlers['RREG'] = self.__RREG
@@ -119,6 +118,28 @@ class DFSClientProtocol(WebSocketClientProtocol):
         data['cmd'] = 'AUTH'
         del data['server']
         del data['json']
+
+    def __LIST(self, data):
+        """
+            Processing for LIST command
+        """
+        data = commands.constructDataClient('LIST', data['user'], data['password'], True)
+        return data
+
+    def __CLST(self, data):
+        """
+            Processing for CLST command
+        """
+        if data['files'] is None:
+            print "WARNING: You don't write any file into storage..."
+        else:
+            print "--------------------------------"
+            print "Files:"
+            for (id_enum, file_storage) in enumerate(data['files']):
+                print "%d. %s" % (id_enum + 1, file_storage)
+            print "--------------------------------"
+        data['cmd'] = 'AUTH'
+        del data['files']
 
     def __EXIT(self, data):
         """
@@ -229,10 +250,10 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 data = self.commands_handlers[cmd](data)
         # for authorized users commands
         else:
-            if data['cmd'] in ['COWF']:
+            self.clear_console()
+            if data['cmd'] in ['COWF', 'CLST']:
                 continue_cmd = data['cmd']
                 self.commands_handlers[continue_cmd](data)
-            self.clear_console()
             if data['error']:
                 print '-----------------------======= ERRORS & WARNINGS =======-----------------------'
                 for error in data['error']:
@@ -242,7 +263,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print "Current user: %s" % (data['user'])
             self.mainMenu()
             cmd = ''
-            while cmd not in self.commands.keys() + ['COWF']:
+            while cmd not in self.commands.keys() + ['COWF', 'CLST']:
                 cmd = raw_input('Command: ').upper()
                 # not realized function? --> try enter next command and print error
                 if (cmd not in self.commands.keys() or (self.commands_handlers[cmd] is None)):
