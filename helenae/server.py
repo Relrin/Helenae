@@ -77,6 +77,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         def getResult(result):
             self.lstFS.append(result)
 
+        log.msg("[POLL] Start daemon for polling servers...")
         poll_session = self.Session()
         servers = poll_session.execute(sqlalchemy.select([FileServer]))
         servers = servers.fetchall()
@@ -92,6 +93,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
         self.balancer.updateFileServerList(self.lstFS)
         self.lstFS = []
+        log.msg("[POLL] Polling process has complete!")
         d = deferLater(reactor, POLL_TIME, self.__pollServers)
 
     def __initHandlersUser(self):
@@ -107,7 +109,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['DELT'] = None
         handlers['RNME'] = None
         handlers['SYNC'] = None
-        handlers['LIST'] = None
+        handlers['LIST'] = self.get_fs_structure
         return handlers
 
     def registration(self, data):
@@ -140,8 +142,8 @@ class DFSServerProtocol(WebSocketServerProtocol):
 
                 log.msg("[REGS] Add new user into DB...")
                 fs = session.execute(sqlalchemy.select([FileSpace])
-                                                  .where(FileSpace.storage_name == fs_name)
-                                    )
+                                               .where(FileSpace.storage_name == fs_name)
+                                     )
                 fs = fs.fetchone()
                 time_is = datetime.datetime.strptime(strftime("%d.%m.%Y", gmtime()), "%d.%m.%Y").date()
                 time_is = time_is + datetime.timedelta(days=365)
@@ -266,6 +268,45 @@ class DFSServerProtocol(WebSocketServerProtocol):
             del data['file_hash']
             del data['file_size']
             session.close()
+        return data
+
+    def __get_files(self, user_id):
+        """
+            Get files from DB
+        """
+        result = None
+        try:
+            session = self.Session()
+            user = session.execute(sqlalchemy.select([Users])
+                                             .where(Users.name == user_id)
+                                   ).fetchone()
+            catalog = session.execute(sqlalchemy.select([Catalog])
+                                                .where(Catalog.fs_id == user.filespace_id)
+                                      ).fetchone()
+            files = session.query(FileTable).filter_by(catalog_id=catalog.id).all()
+            if len(files) > 0:
+                result = files
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+        return result
+
+
+    def get_fs_structure(self, data):
+        """
+            Get list of all written file by some user
+        """
+        log.msg('[LIST] Getting data for User=%s' % (data['user']))
+        files = self.__get_files(str(data['user']))
+        if files is None:
+            data['files'] = None
+        else:
+            data['files'] = [file_storage.original_name for file_storage in files]
+        data['cmd'] = 'CLST'
+        log.msg('[LIST] Getting data for User=%s has complete!' % (data['user']))
         return data
 
     def onMessage(self, payload, isBinary):
