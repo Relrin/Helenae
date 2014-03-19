@@ -43,6 +43,20 @@ def constructDataClient(cmd, user, hash_password, auth, error=''):
         data['error'].append(error)
     return dumps(data)
 
+def constructFileClient(cmd, user, hash_password, auth, file_fs, error=''):
+    """
+        Create JSON for server from Client (READ/DELETE operation)
+    """
+    data = constructBasicJSON()
+    data['cmd'] = cmd
+    data['user'] = user
+    data['password'] = hash_password
+    data['auth'] = auth
+    data['file'] = file_fs
+    if error:
+        data['error'].append(error)
+    return dumps(data)
+
 
 def constructFileDataByClient(cmd, user, hash_password, auth, file_path, file_size, file_hash, error=''):
     """
@@ -59,7 +73,6 @@ def constructFileDataByClient(cmd, user, hash_password, auth, file_path, file_si
     if error:
         data['error'].append(error)
     return dumps(data)
-
 
 def AUTH(result, data):
     error_msg = "[AUTH] User=%s successfully logged..." % data['user']

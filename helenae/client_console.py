@@ -2,6 +2,7 @@ import sys
 import os
 import platform
 import getpass
+import pickle
 from subprocess import Popen, PIPE, STDOUT
 from json import dumps, loads, dump
 from optparse import OptionParser
@@ -46,6 +47,19 @@ class DFSClientProtocol(WebSocketClientProtocol):
     def __init__(self):
         self.counterAttemptsLogin = 3
         self.commands_handlers = self.__initHandlersUser()
+        self.__servers = None
+        self.__files = None
+        self.__user_ids = None
+
+    def __initCashe(self, servers, files, user_ids):
+        self.__servers = servers
+        self.__files = files
+        self.__user_ids = user_ids
+
+    def __clearCashe(self):
+        self.__servers = None
+        self.__files = None
+        self.__user_ids = None
 
     def __initHandlersUser(self):
         """
@@ -54,9 +68,9 @@ class DFSClientProtocol(WebSocketClientProtocol):
         handlers = commands.commands_handlers_user
         # basic commands
         handlers['AUTH'] = self.__AUTH
-        handlers['READ'] = None
+        handlers['READ'] = self.__READ
         handlers['WRTE'] = self.__WRTE
-        handlers['DELT'] = None
+        handlers['DELT'] = self.__DELT
         handlers['RNME'] = None
         handlers['SYNC'] = None
         handlers['LIST'] = self.__LIST
@@ -64,6 +78,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
         # continues operations...
         handlers['COWF'] = self.__COWF
         handlers['CLST'] = self.__CLST
+        handlers['CREA'] = self.__CREA
+        handlers['CDLT'] = self.__CDLT
         # errors, bans, etc.
         handlers['CREG'] = self.__CREG
         handlers['RREG'] = self.__RREG
@@ -85,6 +101,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
             Processing for AUTH command
         """
+        self.__clearCashe()
         self.counterAttemptsLogin = 3
         login, password = self.inputData()
         data = commands.constructDataClient('AUTH', login, password, False)
@@ -115,6 +132,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
                          "file_id": data['json'][2], "src_file": data['json'][3]}
             dump(dict_json, f)
         self.__SendInfoToFileServer(json_file,server_ip,server_port)
+        self.__clearCashe()
         data['cmd'] = 'AUTH'
         del data['server']
         del data['json']
@@ -124,22 +142,100 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Processing for LIST command
         """
         data = commands.constructDataClient('LIST', data['user'], data['password'], True)
+        self.__clearCashe()
         return data
 
     def __CLST(self, data):
         """
             Processing for CLST command
         """
-        if data['files'] is None:
+        files = pickle.loads(data['files'])
+        servers = pickle.loads(data['servers'])
+        user_id = data['user_ids']
+        if files is None:
             print "WARNING: You don't write any file into storage..."
         else:
             print "--------------------------------"
             print "Files:"
-            for (id_enum, file_storage) in enumerate(data['files']):
-                print "%d. %s" % (id_enum + 1, file_storage)
+            for (id_enum, file_storage) in enumerate(files):
+                print "%d. %s" % (id_enum + 1, file_storage.original_name)
             print "--------------------------------"
+            self.__initCashe(servers, files, user_id)
         data['cmd'] = 'AUTH'
         del data['files']
+        del data['servers']
+        del data['user_ids']
+
+    def __READ(self, data):
+        """
+            Processing for READ command (read some file from FS)
+        """
+        if self.__files is None:
+            data = commands.constructDataClient('AUTH', data['user'], data['password'], True,
+                                                "WARNING: Please, get user LIST to get last cashe of your files from server...")
+        else:
+            data = commands.constructDataClient('READ', data['user'], data['password'], True)
+        return data
+
+    def __CREA(self, data):
+        """
+            Second part of READ command: after get file list, we are read enter file name
+        """
+        if self.__files is None:
+            print "WARNING: You don't write any file into storage..."
+        else:
+            filenumber = ''
+            lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
+            while filenumber not in lst_file_numbers:
+                self.clear_console()
+                print "--------------------------------"
+                print "Files:"
+                for (id_enum, file_storage) in enumerate(self.__files):
+                    print "%d. %s" % (id_enum + 1, file_storage.original_name)
+                print "--------------------------------"
+                filenumber = self.inputFileNumber()
+            filenumber = int(filenumber) - 1
+            # creating JSON for read operation
+            server_ip = str(self.__servers[filenumber][0].ip)
+            server_port = str(self.__servers[filenumber][0].port)
+            user_id = 'u' + str(self.__user_ids).rjust(14, '0')
+            file_id = str(self.__files[filenumber].server_name)
+            # get path to file, which using for write block readed information
+            file_path = ''
+            file_format_db = file_id.split('.')[-1]
+            # checking entered path by user
+            while file_path == '':
+                self.clear_console()
+                print 'NOTE: file shall be have equals format!'
+                print 'Enter path to file, which using to store information:'
+                file_path = raw_input('Path:')
+                file_format = file_path.split('/')[-1].split('.')[-1]
+                if len(file_format[0]) == 0:
+                    file_path = ''
+                if file_format != file_format_db:
+                    file_path = ''
+                if os.path.exists(file_path):
+                    file_path = ''
+            json_file = str('./fsc_' + data['user'] + '_' + str(randint(0, 100000)) + '.json')
+            with open(json_file, 'w+') as f:
+                dict_json = {"cmd": "READU_FILE", "user": user_id,
+                             "file_id": file_id, "src_file": file_path}
+                dump(dict_json, f)
+            # stating second subprocess
+            self.__SendInfoToFileServer(json_file, server_ip, server_port)
+        data['cmd'] = 'AUTH'
+
+    def __DELT(self, data):
+        """
+            Processing for DELT command
+        """
+        pass
+
+    def __CDLT(self, data):
+        """
+            Sending to server command to delete some file from user storage
+        """
+        pass
 
     def __EXIT(self, data):
         """
@@ -209,6 +305,13 @@ class DFSClientProtocol(WebSocketClientProtocol):
         email = raw_input('E-mail:')
         return login, password, fullname, email
 
+    def inputFileNumber(self):
+        """
+            Input file number after getting print all file list
+        """
+        filenumber = raw_input('File number:')
+        return filenumber
+
     def onOpen(self):
         """
             Send auth request to server, when create connection
@@ -251,7 +354,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         # for authorized users commands
         else:
             self.clear_console()
-            if data['cmd'] in ['COWF', 'CLST']:
+            if data['cmd'] in ['COWF', 'CLST', 'CREA', 'CDLT']:
                 continue_cmd = data['cmd']
                 self.commands_handlers[continue_cmd](data)
             if data['error']:
@@ -263,7 +366,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print "Current user: %s" % (data['user'])
             self.mainMenu()
             cmd = ''
-            while cmd not in self.commands.keys() + ['COWF', 'CLST']:
+            while cmd not in self.commands.keys() + ['COWF', 'CLST', 'CREA', 'CDLT']:
                 cmd = raw_input('Command: ').upper()
                 # not realized function? --> try enter next command and print error
                 if (cmd not in self.commands.keys() or (self.commands_handlers[cmd] is None)):

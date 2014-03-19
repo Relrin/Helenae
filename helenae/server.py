@@ -1,5 +1,6 @@
 import sys
 import datetime
+import pickle
 from json import dumps, loads
 from hashlib import sha256
 from time import gmtime, strftime
@@ -104,9 +105,9 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['REGS'] = self.registration
         handlers['FSRV'] = self.fileserver_auth
         handlers['AUTH'] = self.authorization
-        handlers['READ'] = None
+        handlers['READ'] = self.read_fs
         handlers['WRTE'] = self.write_file
-        handlers['DELT'] = None
+        handlers['DELT'] = self.delete
         handlers['RNME'] = None
         handlers['SYNC'] = None
         handlers['LIST'] = self.get_fs_structure
@@ -148,7 +149,9 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 time_is = datetime.datetime.strptime(strftime("%d.%m.%Y", gmtime()), "%d.%m.%Y").date()
                 time_is = time_is + datetime.timedelta(days=365)
                 date_max = time_is.strftime("%d.%m.%Y")
-                new_user = Users(data['user'], data['fullname'], str(sha256(data['password']).hexdigest()), data['email'], date_max, 1, 2, fs.id)
+                id_new = session.execute(func.count(Users.id)).fetchone()[0] + 1
+                password_hash = str(sha256(data['password']+str(id_new)).hexdigest())
+                new_user = Users(data['user'], data['fullname'], password_hash, data['email'], date_max, 1, 2, fs.id)
                 session.add(new_user)
                 session.commit()
                 data['error'] = []
@@ -274,7 +277,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
             Get files from DB
         """
-        result = None
+        result = None, None, None
         try:
             session = self.Session()
             user = session.execute(sqlalchemy.select([Users])
@@ -285,7 +288,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                                       ).fetchone()
             files = session.query(FileTable).filter_by(catalog_id=catalog.id).all()
             if len(files) > 0:
-                result = files
+                result = files, [file.server_id for file in files], user.id
         except sqlalchemy.exc.ArgumentError:
             log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
         except sqlalchemy.exc.CompileError:
@@ -294,19 +297,32 @@ class DFSServerProtocol(WebSocketServerProtocol):
             session.close()
         return result
 
-
     def get_fs_structure(self, data):
         """
             Get list of all written file by some user
         """
         log.msg('[LIST] Getting data for User=%s' % (data['user']))
-        files = self.__get_files(str(data['user']))
-        if files is None:
-            data['files'] = None
-        else:
-            data['files'] = [file_storage.original_name for file_storage in files]
+        files, servers, user_ids = self.__get_files(str(data['user']))
+        data['files'] = pickle.dumps(files)
+        data['servers'] = pickle.dumps(servers)
+        data['user_ids'] = user_ids
         data['cmd'] = 'CLST'
         log.msg('[LIST] Getting data for User=%s has complete!' % (data['user']))
+        return data
+
+    def read_fs(self, data):
+        """
+            Building serialized file list
+        """
+        log.msg('[READ] Getting data for User=%s' % (data['user']))
+        data['cmd'] = 'CREA'
+        log.msg('[READ] Getting data for User=%s has complete!' % (data['user']))
+        return data
+
+    def delete_file(self, data):
+        """
+            Delete file from record, and after this - from server
+        """
         return data
 
     def onMessage(self, payload, isBinary):
