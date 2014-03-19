@@ -3,6 +3,7 @@ import os
 import platform
 import getpass
 import pickle
+import binascii
 from subprocess import Popen, PIPE, STDOUT
 from json import dumps, loads, dump
 from optparse import OptionParser
@@ -47,6 +48,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
     def __init__(self):
         self.counterAttemptsLogin = 3
         self.commands_handlers = self.__initHandlersUser()
+        self.__filenumber = None
         self.__servers = None
         self.__files = None
         self.__user_ids = None
@@ -158,7 +160,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print "--------------------------------"
             print "Files:"
             for (id_enum, file_storage) in enumerate(files):
-                print "%d. %s" % (id_enum + 1, file_storage.original_name)
+                file_size = commands.convertSize(file_storage.chunk_size)
+                print "%d. %s\t[Size: %s]" % (id_enum + 1, file_storage.original_name, str(file_size))
             print "--------------------------------"
             self.__initCashe(servers, files, user_id)
         data['cmd'] = 'AUTH'
@@ -172,9 +175,22 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
         if self.__files is None:
             data = commands.constructDataClient('AUTH', data['user'], data['password'], True,
-                                                "WARNING: Please, get user LIST to get last cashe of your files from server...")
+                                                "WARNING: Please, use LIST to get last cashe of your files from server...")
         else:
-            data = commands.constructDataClient('READ', data['user'], data['password'], True)
+            self.__filenumber = ''
+            lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
+            while self.__filenumber not in lst_file_numbers:
+                self.clear_console()
+                print "--------------------------------"
+                print "Files:"
+                for (id_enum, file_storage) in enumerate(self.__files):
+                    file_size = commands.convertSize(file_storage.chunk_size)
+                    print "%d. %s\t[Size: %s]" % (id_enum + 1, file_storage.original_name, str(file_size))
+                print "--------------------------------"
+                self.__filenumber = self.inputFileNumber()
+            self.__filenumber = int(self.__filenumber) - 1
+            file_hash = self.__files[self.__filenumber].file_hash
+            data = commands.constructFileDataByClient('READ', data['user'], data['password'], True, '', 0, file_hash)
         return data
 
     def __CREA(self, data):
@@ -184,22 +200,11 @@ class DFSClientProtocol(WebSocketClientProtocol):
         if self.__files is None:
             print "WARNING: You don't write any file into storage..."
         else:
-            filenumber = ''
-            lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
-            while filenumber not in lst_file_numbers:
-                self.clear_console()
-                print "--------------------------------"
-                print "Files:"
-                for (id_enum, file_storage) in enumerate(self.__files):
-                    print "%d. %s" % (id_enum + 1, file_storage.original_name)
-                print "--------------------------------"
-                filenumber = self.inputFileNumber()
-            filenumber = int(filenumber) - 1
             # creating JSON for read operation
-            server_ip = str(self.__servers[filenumber][0].ip)
-            server_port = str(self.__servers[filenumber][0].port)
+            server_ip = str(self.__servers[self.__filenumber][0].ip)
+            server_port = str(self.__servers[self.__filenumber][0].port)
             user_id = 'u' + str(self.__user_ids).rjust(14, '0')
-            file_id = str(self.__files[filenumber].server_name)
+            file_id = str(self.__files[self.__filenumber].server_name)
             # get path to file, which using for write block readed information
             file_path = ''
             file_format_db = file_id.split('.')[-1]
@@ -223,19 +228,57 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 dump(dict_json, f)
             # stating second subprocess
             self.__SendInfoToFileServer(json_file, server_ip, server_port)
+        self.__filenumber = None
         data['cmd'] = 'AUTH'
 
     def __DELT(self, data):
         """
             Processing for DELT command
         """
-        pass
+        if self.__files is None:
+            data = commands.constructDataClient('AUTH', data['user'], data['password'], True,
+                                                "WARNING: Please, use LIST to get last cashe of your files from server...")
+        else:
+            self.__filenumber = ''
+            lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
+            while self.__filenumber not in lst_file_numbers:
+                self.clear_console()
+                print "--------------------------------"
+                print "Files:"
+                for (id_enum, file_storage) in enumerate(self.__files):
+                    file_size = commands.convertSize(file_storage.chunk_size)
+                    print "%d. %s\t[Size: %s]" % (id_enum + 1, file_storage.original_name, str(file_size))
+                print "--------------------------------"
+                self.__filenumber = self.inputFileNumber()
+            self.__filenumber = int(self.__filenumber) - 1
+            file_id = self.__files[self.__filenumber].id
+            file_hash = self.__files[self.__filenumber].file_hash
+            data = commands.constructFileDataByClient('DELT', data['user'], data['password'], True, file_id, 0, file_hash)
+        return data
 
     def __CDLT(self, data):
         """
             Sending to server command to delete some file from user storage
         """
-        pass
+        if self.__files is None:
+            print "WARNING: You don't write any file into storage..."
+        else:
+            # creating JSON for read operation
+            server_ip = str(self.__servers[self.__filenumber][0].ip)
+            server_port = str(self.__servers[self.__filenumber][0].port)
+            user_id = 'u' + str(self.__user_ids).rjust(14, '0')
+            file_id = str(self.__files[self.__filenumber].server_name)
+            # checking entered path by user
+            json_file = str('./fsc_' + data['user'] + '_' + str(randint(0, 100000)) + '.json')
+            with open(json_file, 'w+') as f:
+                dict_json = {"cmd": "DELET_FILE", "user": user_id,
+                             "file_id": file_id, "src_file": ''}
+                dump(dict_json, f)
+            # stating second subprocess
+            self.__SendInfoToFileServer(json_file, server_ip, server_port)
+        self.__filenumber = None
+        self.__clearCashe()
+        data['cmd'] = 'AUTH'
 
     def __EXIT(self, data):
         """
@@ -383,11 +426,13 @@ if __name__ == '__main__':
         log.startLogging(sys.stdout)
 
     parser = OptionParser()
-    parser.add_option("-u", "--url", dest = "url", help = "The WebSocket URL", default = "wss://localhost:9000")
+    parser.add_option("-i", "--ip", dest = "ip", help = "The WebSocket IP", default = "localhost")
+    parser.add_option("-p", "--port", dest = "port", help = "The WebSocket port", default = "9000")
     (options, args) = parser.parse_args()
 
+    host_url = "wss://%s:%s" % (options.ip, options.port)
     # create a WS server factory with our protocol
-    factory = WebSocketClientFactory(options.url, debug = False)
+    factory = WebSocketClientFactory(host_url, debug = False)
     factory.protocol = DFSClientProtocol
 
     # SSL client context: using default

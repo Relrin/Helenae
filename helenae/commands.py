@@ -1,6 +1,7 @@
 """
     This module contains basics commands, which [user/file server] can using
 """
+from math import log
 from json import dumps
 from hashlib import sha256
 
@@ -16,6 +17,22 @@ commands_user = {"AUTH": "autorization with server",
 
 commands_handlers_user   = dict((key, None) for key in commands_user.keys())
 commands_handlers_server = dict((key, None) for key in commands_user.keys() if key not in ('AUTH', 'EXIT'))
+
+unit_list = zip(['bytes', 'Kb', 'Mb', 'Gb', 'Tb', 'Pb'], [0, 0, 1, 2, 2, 2])
+def convertSize(num):
+    """
+        Converting file size in bytes to Kb/Mb /etc.
+    """
+    if num > 1:
+        exponent = min(int(log(num, 1024)), len(unit_list) - 1)
+        quotient = float(num) / 1024**exponent
+        unit, num_decimals = unit_list[exponent]
+        format_string = '{:.%sf} {}' % (num_decimals)
+        return format_string.format(quotient, unit)
+    if num == 0:
+        return '0 bytes'
+    if num == 1:
+        return '1 byte'
 
 def constructBasicJSON():
     """
