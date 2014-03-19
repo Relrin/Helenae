@@ -3,7 +3,6 @@ import os
 import platform
 import getpass
 import pickle
-import binascii
 from subprocess import Popen, PIPE, STDOUT
 from json import dumps, loads, dump
 from optparse import OptionParser
