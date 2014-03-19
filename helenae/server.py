@@ -107,7 +107,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['AUTH'] = self.authorization
         handlers['READ'] = self.read_fs
         handlers['WRTE'] = self.write_file
-        handlers['DELT'] = self.delete
+        handlers['DELT'] = self.delete_file
         handlers['RNME'] = None
         handlers['SYNC'] = None
         handlers['LIST'] = self.get_fs_structure
@@ -314,15 +314,48 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
             Building serialized file list
         """
-        log.msg('[READ] Getting data for User=%s' % (data['user']))
-        data['cmd'] = 'CREA'
-        log.msg('[READ] Getting data for User=%s has complete!' % (data['user']))
+        server = self.balancer.getFileServer(data['cmd'], data['file_hash'])
+        if server is None:
+            msg = "ERROR: Can't read now your file: servers in offline. Try later..."
+            data['cmd'] = 'AUTH'
+            data['error'].append(msg)
+            log.msg(log.msg("[READ] %s..." % msg))
+        else:
+            log.msg('[READ] Getting data for User=%s' % (data['user']))
+            data['cmd'] = 'CREA'
+            log.msg('[READ] Getting data for User=%s has complete!' % (data['user']))
         return data
 
     def delete_file(self, data):
         """
             Delete file from record, and after this - from server
         """
+        server = self.balancer.getFileServer(data['cmd'], data['file_hash'])
+        try:
+            session = self.Session()
+            if server is None:
+                msg = "ERROR: Can't delete now your file: servers in offline. Try later..."
+                data['cmd'] = 'AUTH'
+                data['error'].append(msg)
+                log.msg(log.msg("[DELT] %s..." % msg))
+            else:
+                log.msg('[DELT] Delete data for User=%s' % (data['user']))
+                file = session.query(FileTable).filter_by(id=data['file_path']).first()
+                servers = file.server_id[:]
+                for server in servers:
+                    file.server_id.remove(server)
+                session.commit()
+                session.delete(file)
+                session.commit()
+                data['cmd'] = 'CDLT'
+                log.msg('[DELT] Delete data for User=%s has complete!' % (data['user']))
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+        del data['file_path']
         return data
 
     def onMessage(self, payload, isBinary):
@@ -361,18 +394,6 @@ class DFSServerProtocol(WebSocketServerProtocol):
                     json_data['error'].append('ERROR: This command is not supported on server...')
             response = dumps(json_data)
         self.sendMessage(str(response))
-
-    def readFileStructure(self):
-        """
-            Get all files/folders/etc. structure from DB
-        """
-        pass
-
-    def getServerParams(self):
-        """
-            Getting (IP, PORT) of "File Server" to read/write operations
-        """
-        pass
 
     def fileSync(self):
         """
