@@ -60,6 +60,21 @@ def constructDataClient(cmd, user, hash_password, auth, error=''):
         data['error'].append(error)
     return dumps(data)
 
+def constructDataRenameClient(cmd, user, hash_password, auth, file_id, new_name, error=''):
+    """
+        Create JSON for server from Client for RNME operation
+    """
+    data = constructBasicJSON()
+    data['cmd'] = cmd
+    data['user'] = user
+    data['password'] = hash_password
+    data['auth'] = auth
+    data['file_id'] = file_id
+    data['new_name'] = new_name
+    if error:
+        data['error'].append(error)
+    return dumps(data)
+
 def constructFileClient(cmd, user, hash_password, auth, file_fs, error=''):
     """
         Create JSON for server from Client (READ/DELETE operation)
