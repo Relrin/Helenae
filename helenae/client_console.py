@@ -3,7 +3,6 @@ import os
 import platform
 import getpass
 import pickle
-import binascii
 from subprocess import Popen, PIPE, STDOUT
 from json import dumps, loads, dump
 from optparse import OptionParser
@@ -73,7 +72,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         handlers['READ'] = self.__READ
         handlers['WRTE'] = self.__WRTE
         handlers['DELT'] = self.__DELT
-        handlers['RNME'] = None
+        handlers['RNME'] = self.__RNME
         handlers['SYNC'] = None
         handlers['LIST'] = self.__LIST
         handlers['EXIT'] = self.__EXIT
@@ -82,6 +81,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         handlers['CLST'] = self.__CLST
         handlers['CREA'] = self.__CREA
         handlers['CDLT'] = self.__CDLT
+        handlers['CRNM'] = self.__CRNM
         # errors, bans, etc.
         handlers['CREG'] = self.__CREG
         handlers['RREG'] = self.__RREG
@@ -157,13 +157,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
         if files is None:
             print "WARNING: You don't write any file into storage..."
         else:
-            print "--------------------------------"
-            print "Files:"
-            for (id_enum, file_storage) in enumerate(files):
-                file_size = commands.convertSize(file_storage.chunk_size)
-                print "%d. %s\t[Size: %s]" % (id_enum + 1, file_storage.original_name, str(file_size))
-            print "--------------------------------"
             self.__initCashe(servers, files, user_id)
+            self.print_storage_files()
         data['cmd'] = 'AUTH'
         del data['files']
         del data['servers']
@@ -181,12 +176,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
             while self.__filenumber not in lst_file_numbers:
                 self.clear_console()
-                print "--------------------------------"
-                print "Files:"
-                for (id_enum, file_storage) in enumerate(self.__files):
-                    file_size = commands.convertSize(file_storage.chunk_size)
-                    print "%d. %s\t[Size: %s]" % (id_enum + 1, file_storage.original_name, str(file_size))
-                print "--------------------------------"
+                self.print_storage_files()
                 self.__filenumber = self.inputFileNumber()
             self.__filenumber = int(self.__filenumber) - 1
             file_hash = self.__files[self.__filenumber].file_hash
@@ -243,12 +233,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
             while self.__filenumber not in lst_file_numbers:
                 self.clear_console()
-                print "--------------------------------"
-                print "Files:"
-                for (id_enum, file_storage) in enumerate(self.__files):
-                    file_size = commands.convertSize(file_storage.chunk_size)
-                    print "%d. %s\t[Size: %s]" % (id_enum + 1, file_storage.original_name, str(file_size))
-                print "--------------------------------"
+                self.print_storage_files()
                 self.__filenumber = self.inputFileNumber()
             self.__filenumber = int(self.__filenumber) - 1
             file_id = self.__files[self.__filenumber].id
@@ -277,6 +262,46 @@ class DFSClientProtocol(WebSocketClientProtocol):
             # stating second subprocess
             self.__SendInfoToFileServer(json_file, server_ip, server_port)
         self.__filenumber = None
+        self.__clearCashe()
+        data['cmd'] = 'AUTH'
+
+    def __RNME(self, data):
+        """
+            Rename file handler for RNME operation
+        """
+        if self.__files is None:
+            data = commands.constructDataClient('AUTH', data['user'], data['password'], True,
+                                                "WARNING: Please, use LIST to get last cashe of your files from server...")
+        else:
+            self.__filenumber = ''
+            lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
+            while self.__filenumber not in lst_file_numbers:
+                self.clear_console()
+                self.print_storage_files()
+                self.__filenumber = self.inputFileNumber()
+            self.__filenumber = int(self.__filenumber) - 1
+            # get file info (id and original name)
+            file_id = self.__files[self.__filenumber].id
+            file_original_name = self.__files[self.__filenumber].original_name
+            file_format_db = file_original_name.split('.')[-1]
+            new_name = ''
+            # checking entered path by user
+            while new_name == '':
+                self.clear_console()
+                print 'NOTE: file shall be have equals format!'
+                print 'Enter new name for file, which replaced previous name:'
+                new_name = raw_input('New name:')
+                file_format = new_name.split('/')[-1].split('.')[-1]
+                if len(file_format[0]) == 0:
+                    new_name = ''
+                if file_format != file_format_db:
+                     new_name = ''
+            data = commands.constructDataRenameClient('RNME', data['user'], data['password'], True, file_id, new_name)
+        return data
+
+    def __CRNM(self, data):
+        print 'Rename has complete!'
+        print 'Please, use LIST command for get last state of cashe...'
         self.__clearCashe()
         data['cmd'] = 'AUTH'
 
@@ -322,6 +347,17 @@ class DFSClientProtocol(WebSocketClientProtocol):
             # its Windows
             os.system('cls')
 
+    def print_storage_files(self):
+        """
+            Display all files, which user loaded on server
+        """
+        print "--------------------------------"
+        print "Files:"
+        for (id_enum, file_storage) in enumerate(self.__files):
+            file_size = commands.convertSize(file_storage.chunk_size)
+            print "%d. %s\t[Size: %s]" % (id_enum + 1, file_storage.original_name, str(file_size))
+        print "--------------------------------"
+
     def mainMenu(self):
         """
             Print available commands into console
@@ -352,7 +388,11 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
             Input file number after getting print all file list
         """
-        filenumber = raw_input('File number:')
+        filenumber = ''
+        try:
+            filenumber = raw_input('File number:')
+        except ValueError:
+            print 'Enter only DIGITS, which equals some file, not text!'
         return filenumber
 
     def onOpen(self):
@@ -397,7 +437,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         # for authorized users commands
         else:
             self.clear_console()
-            if data['cmd'] in ['COWF', 'CLST', 'CREA', 'CDLT']:
+            if data['cmd'] in ['COWF', 'CLST', 'CREA', 'CDLT', 'CRNM']:
                 continue_cmd = data['cmd']
                 self.commands_handlers[continue_cmd](data)
             if data['error']:
@@ -409,7 +449,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print "Current user: %s" % (data['user'])
             self.mainMenu()
             cmd = ''
-            while cmd not in self.commands.keys() + ['COWF', 'CLST', 'CREA', 'CDLT']:
+            while cmd not in self.commands.keys() + ['COWF', 'CLST', 'CREA', 'CDLT', 'CRNM']:
                 cmd = raw_input('Command: ').upper()
                 # not realized function? --> try enter next command and print error
                 if (cmd not in self.commands.keys() or (self.commands_handlers[cmd] is None)):
