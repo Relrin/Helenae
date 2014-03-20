@@ -108,7 +108,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['READ'] = self.read_fs
         handlers['WRTE'] = self.write_file
         handlers['DELT'] = self.delete_file
-        handlers['RNME'] = None
+        handlers['RNME'] = self.rename_file
         handlers['SYNC'] = None
         handlers['LIST'] = self.get_fs_structure
         return handlers
@@ -356,6 +356,29 @@ class DFSServerProtocol(WebSocketServerProtocol):
         finally:
             session.close()
         del data['file_path']
+        return data
+
+    def rename_file(self, data):
+        """
+            Renaming file on DB (NOT on file servers!)
+        """
+        try:
+            session = self.Session()
+            log.msg('[RNME] Rename file by User=%s' % (data['user']))
+            dict_file = {"original_name": data['new_name']}
+            file_id = data['file_id']
+            session.query(FileTable).filter_by(id=file_id).update(dict_file)
+            session.commit()
+            data['cmd'] = 'CRNM'
+            log.msg('[RNME] Rename file by User=%s has complete!' % (data['user']))
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+        del data['file_id']
+        del data['new_name']
         return data
 
     def onMessage(self, payload, isBinary):
