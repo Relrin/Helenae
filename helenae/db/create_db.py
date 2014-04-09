@@ -64,7 +64,7 @@ def initialize_db():
     session.commit()
 
     hash_pswd = str(sha256('123456'+'1').hexdigest())
-    test_user = Users('relrin', 'Valery Savich', hash_pswd, 'some@mail.com', '01.01.2015', 1, 2, 1)
+    test_user = Users('relrin', 'Valery Savich', hash_pswd, 'some@mail.com', '01.01.2015', 1, 3, 1)
     session.add(test_user)
     session.commit()
 
