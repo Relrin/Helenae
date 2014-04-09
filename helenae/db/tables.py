@@ -63,7 +63,7 @@ class AccountType(Base):
     description = Column(String, nullable=False)
     cost = Column(Float, nullable=False)
 
-    def __init__(self, name, cost, description=''):
+    def __init__(self, name="unknown", cost=0, description=''):
         self.name = name
         self.cost = cost
         self.description = description
@@ -78,7 +78,7 @@ class Group(Base):
     name = Column(String, unique=True)
     permission = Column(Integer, nullable=False)
 
-    def __init__(self, name, permission):
+    def __init__(self, name="unknown", permission=0):
         self.name = name
         self.permission = permission
 
@@ -93,10 +93,11 @@ class FileSpace(Base):
     created_time = Column(DateTime, nullable=False)
     catalog_id = relationship("Catalog")
 
-    def __init__(self, name, catalog):
+    def __init__(self, name="un", catalog=None):
         self.storage_name = name
         self.created_time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-        self.catalog_id.append(catalog)
+        if catalog is not None:
+            self.catalog_id.append(catalog)
 
     def __repr__(self):
         return "<FileSpace('%s','%s')>" % (self.name, self.created_time)
@@ -162,7 +163,7 @@ class FileServer(Base):
     status = Column(String)
     last_online = Column(DateTime)
 
-    def __init__(self, ip, port, status):
+    def __init__(self, ip='127.0.0.1', port='9999', status="OFFLINE"):
         self.ip = ip
         self.port = port
         self.status = status
