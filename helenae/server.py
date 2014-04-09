@@ -14,13 +14,15 @@ from twisted.internet import reactor, ssl
 from twisted.internet.task import deferLater
 from twisted.python import log, logfile
 from twisted.web.server import Site
-from twisted.web.static import File
+from twisted.web.wsgi import WSGIResource
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
 
 import commands
+from balancer import Balancer
 from db.tables import File as FileTable
 from db.tables import Users, FileServer, FileSpace, Catalog
-from balancer import Balancer
+from flask_app import app
+
 
 # TODO: Create PLUGIN architecture (using twistd)
 # TODO: Errors/Exceptions processing
@@ -54,12 +56,17 @@ class DFSServerProtocol(WebSocketServerProtocol):
         self.balancer = Balancer()
         d = deferLater(reactor, 5, self.__pollServers)
 
+    def __create_session(self):
+        session = self.Session()
+        session._model_changes = {}
+        return session
+
     def __updateStatusDB(self):
         """
             Updating status field in DB for every available server
         """
         dump = self.lstFS
-        session = self.Session()
+        session = self.__create_session()
         for server in dump:
             ip = server[0]
             port = server[1]
@@ -79,7 +86,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
             self.lstFS.append(result)
 
         log.msg("[POLL] Start daemon for polling servers...")
-        poll_session = self.Session()
+        poll_session = self.__create_session()
         servers = poll_session.execute(sqlalchemy.select([FileServer]))
         servers = servers.fetchall()
         poll_session.close()
@@ -116,7 +123,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
     def registration(self, data):
         log.msg("[REGS] New user=%s: want to create account" % (data['user']))
         try:
-            session = self.Session()
+            session = self.__create_session()
             checker = session.execute(sqlalchemy.select([Users])
                                                 .where(Users.name == data['user'])
                                      )
@@ -178,7 +185,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         result = {}
         log.msg("[FSRV] Adding new fileserver into DB with IP=%s, PORT=%d" % (connection_data.host, port))
         try:
-            session = self.Session()
+            session = self.__create_session()
             checker = session.execute(sqlalchemy.select([FileServer])
                                                 .where(and_(FileServer.ip == connection_data.host, FileServer.port == port))
                                      )
@@ -206,7 +213,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
         log.msg("[AUTH] User=%s trying to auth..." % data['user'])
         try:
-            session = self.Session()
+            session = self.__create_session()
             result = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user']))
             result = result.fetchone()
             data, result_msg = commands.AUTH(result, data)
@@ -225,7 +232,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
         log.msg("[WRTE] User=%s trying to write file..." % data['user'])
         try:
-            session = self.Session()
+            session = self.__create_session()
             server = self.balancer.getFileServer(data['cmd'], data['file_hash'])
             if server is None:
                 msg = "ERROR: Can't write now your file: servers in offline. Try later..."
@@ -279,7 +286,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
         result = None, None, None
         try:
-            session = self.Session()
+            session = self.__create_session()
             user = session.execute(sqlalchemy.select([Users])
                                              .where(Users.name == user_id)
                                    ).fetchone()
@@ -332,7 +339,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
         server = self.balancer.getFileServer(data['cmd'], data['file_hash'])
         try:
-            session = self.Session()
+            session = self.__create_session()
             if server is None:
                 msg = "ERROR: Can't delete now your file: servers in offline. Try later..."
                 data['cmd'] = 'AUTH'
@@ -363,7 +370,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
             Renaming file on DB (NOT on file servers!)
         """
         try:
-            session = self.Session()
+            session = self.__create_session()
             log.msg('[RNME] Rename file by User=%s' % (data['user']))
             dict_file = {"original_name": data['new_name']}
             file_id = data['file_id']
@@ -433,7 +440,7 @@ if __name__ == '__main__':
         debug = False
         port = int(sys.argv[1])
 
-    contextFactory = ssl.DefaultOpenSSLContextFactory('keys/server.key', 'keys/server.crt')
+    contextFactory = ssl.DefaultOpenSSLContextFactory('web/keys/server.key', 'web/keys/server.crt')
 
     server_addr = "wss://localhost:%d" % (port)
     factory = WebSocketServerFactory(server_addr, debug = debug, debugCodePaths = debug)
@@ -442,11 +449,9 @@ if __name__ == '__main__':
 
     listenWS(factory, contextFactory)
 
-    webdir = File("./web/")
-    webdir.contentTypes['.crt'] = 'application/x-x509-ca-cert'
-    web = Site(webdir)
-
-    reactor.listenSSL(8080, web, contextFactory)
+    # Flask with SSL under Twisted
+    resource = WSGIResource(reactor, reactor.getThreadPool(), app)
+    site = Site(resource)
+    reactor.listenSSL(8080, site, contextFactory)
     #reactor.listenTCP(8080, web)
-
     reactor.run()
