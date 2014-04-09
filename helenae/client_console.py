@@ -316,7 +316,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
             Processing for RREG command (when error on creating new account)
         """
-        print data['error']
+        for error in data['error']:
+            print error
         login, password, fullname, email = self.inputDataNewUser()
         data = dumps({'cmd': 'REGS', 'user': login, 'password': password, 'auth': False, 'error': [],
                       'email': email, 'fullname': fullname})

@@ -12,7 +12,7 @@ commands_user = {"AUTH": "autorization with server",
                  "DELT": "delete file from storage",
                  "RNME": "rename file",
                  "LIST": "get list of all files from storage with this user",
-                 "SYNC": "synchronize all files with storage on the server",
+                 #"SYNC": "synchronize all files with storage on the server",
                  "EXIT": "disconnect from server or end session"}
 
 commands_handlers_user   = dict((key, None) for key in commands_user.keys())
