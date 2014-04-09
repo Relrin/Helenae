@@ -1,0 +1,66 @@
+{% extends 'admin/master.html' %}
+{% block head %}
+        <style type="text/css">
+              body {
+                padding-top: 40px;
+                padding-bottom: 40px;
+                background-color: #f5f5f5;
+              }
+
+              .form-signin {
+                max-width: 300px;
+                padding: 19px 29px 29px;
+                margin: 0 auto 20px;
+                background-color: #fff;
+                border: 1px solid #e5e5e5;
+                -webkit-border-radius: 5px;
+                   -moz-border-radius: 5px;
+                        border-radius: 5px;
+                -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.05);
+                   -moz-box-shadow: 0 1px 2px rgba(0,0,0,.05);
+                        box-shadow: 0 1px 2px rgba(0,0,0,.05);
+              }
+              .form-signin .form-signin-heading, .form-signin .checkbox {
+                margin-bottom: 10px;
+              }
+        </style>
+{% endblock head %}
+{% block body %}
+{{ super() }}
+<div class="row-fluid">
+    <div>
+        {% if current_user.is_authenticated() %}
+            <h1>Добро пожаловать!</h1>
+            <p class="lead">
+                Выберите таблицу в меню сверху, с которой Вы хотите работать.
+            </p>
+            <p>
+                Для каждой отображаются все записи, сохраненные на текущий момент в базе данных.
+            </p>
+            <p>
+                Любые значения полей Вы можете изменить так, как считаете нужным. Если необходимо - новые записи можно создать.
+            </p>
+        {% else %}
+            <form method="POST" action="" class="form-signin">
+                {{ form.hidden_tag() if form.hidden_tag }}
+                {% for f in form if f.type != 'CSRFTokenField' %}
+                    <div>
+                    {{ f.label }}
+                    {{ f }}
+                    {% if f.errors %}
+                    <ul>
+                        {% for e in f.errors %}
+                        <font color="red"><li>{{ e }}</li></font>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    </div>
+                {% endfor %}
+                <button class="btn btn-primary" type="submit">Войти</button>
+            </form>
+        {{ link | safe }}
+        {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock body %}
