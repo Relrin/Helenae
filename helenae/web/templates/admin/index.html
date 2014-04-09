@@ -1,4 +1,10 @@
 {% extends 'admin/master.html' %}
+{% block brand %}
+    <span class=brand>
+        <img src="{{ url_for('static', filename='cloud-icon-24.png') }}" style="margin-top: -7px; margin-right: 5px"/>
+        Cloud storage
+    </span>
+{% endblock brand %}
 {% block head %}
         <style type="text/css">
               body {
@@ -38,10 +44,11 @@
                 Для каждой отображаются все записи, сохраненные на текущий момент в базе данных.
             </p>
             <p>
-                Любые значения полей Вы можете изменить так, как считаете нужным. Если необходимо - новые записи можно создать.
+                Любые значения полей Вы можете изменить так, как считаете нужным.
             </p>
         {% else %}
             <form method="POST" action="" class="form-signin">
+                <h2 class="form-signin-heading">Вход в систему</h2>
                 {{ form.hidden_tag() if form.hidden_tag }}
                 {% for f in form if f.type != 'CSRFTokenField' %}
                     <div>
