@@ -38,6 +38,23 @@ class Users(Base):
                                                                self.subscription_time_left, self.acctype_id,
                                                                self.group_id)
 
+    # Flask-Login integration
+    def is_authenticated(self):
+        return True
+
+    def is_active(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return self.id
+
+    # Required for administrative interface
+    def __unicode__(self):
+        return unicode(self.name)
+
 
 class AccountType(Base):
     __tablename__ = 'acctype'
