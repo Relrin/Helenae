@@ -17,21 +17,21 @@ Using
 Running
 -------
 
-Run the server by doing
+For start working with distributed file storage you will need:  
+1) start few (minimum one) file servers from /fileserver/ folder
+
+    # take example of fs.json in /fileserver/ folder
+    python fileserver.py PATH_TO_config.json_FILE FILE
+
+2) Run the server.py by doing
 
     python server.py 9000
 
-and open
+3) Open in your browser
 
     https://localhost:8080/
-
-in your browser.
-
-To activate debug output on the server, start it
-
-    python server.py debug 9000
-
-To run the Python client, do
+    
+or run the Python console client
 
     python client_console.py
 
