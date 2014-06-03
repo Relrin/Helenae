@@ -120,7 +120,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print 'Please, enter correct path to your FILE'
             file_path = unicode(raw_input('Path:'))
         file_hash, file_size = md5_for_file(file_path)
-        data = commands.constructFileDataByClient('WRTE', data['user'], data['password'], True, file_path, file_size, file_hash)
+        data = commands.constructDataClient('WRTE', data['user'], data['password'], True,
+                                            file_path=file_path, file_size=file_size, file_hash=file_hash)
         return data
 
     def __COWF(self, data):
@@ -181,7 +182,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 self.__filenumber = self.inputFileNumber()
             self.__filenumber = int(self.__filenumber) - 1
             file_hash = self.__files[self.__filenumber].file_hash
-            data = commands.constructFileDataByClient('READ', data['user'], data['password'], True, '', 0, file_hash)
+            data = commands.constructDataClient('READ', data['user'], data['password'], True,
+                                                file_path='', file_size=0, file_hash=file_hash)
         return data
 
     def __CREA(self, data):
@@ -239,7 +241,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
             self.__filenumber = int(self.__filenumber) - 1
             file_id = self.__files[self.__filenumber].id
             file_hash = self.__files[self.__filenumber].file_hash
-            data = commands.constructFileDataByClient('DELT', data['user'], data['password'], True, file_id, 0, file_hash)
+            data = commands.constructDataClient('DELT', data['user'], data['password'], True,
+                                                file_path=file_id, file_size=0, file_hash=file_hash)
         return data
 
     def __CDLT(self, data):
@@ -297,7 +300,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
                     new_name = ''
                 if file_format != file_format_db:
                      new_name = ''
-            data = commands.constructDataRenameClient('RNME', data['user'], data['password'], True, file_id, new_name)
+            data = commands.constructDataClient('RNME', data['user'], data['password'], True,
+                                                file_id=file_id, new_name=new_name)
         return data
 
     def __CRNM(self, data):
