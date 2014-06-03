@@ -392,7 +392,36 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
             Synchronization files using rsync tool
         """
-        pass
+        try:
+            server = None
+            session = self.__create_session()
+            # when want to sync more than one file...
+            if len(data['files_u']) > 1:
+                server = []
+                for file in data['files_u']:
+                    original_name = file[0]
+                    server_name = file[1]
+                    file_hash = file[2]
+                    fs = self.balancer.getFileServer(data['cmd'], file_hash)
+                    server.append((original_name, server_name) + (fs if fs else (None,)))
+            # and want to sync only one file...
+            else:
+                original_name = data['files_u'][0][0]
+                server_name = data['files_u'][0][1]
+                file_hash = data['files_u'][0][2]
+                fs = self.balancer.getFileServer(data['cmd'], file_hash)
+                server = [(original_name, server_name) + (fs if fs else (None,))]
+            data['server'] = server
+            data['cmd'] = 'CSYN'
+            log.msg('[SYNC] Delete data for User=%s has complete!' % (data['user']))
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+            del data['files_u']
+        return data
 
     def onMessage(self, payload, isBinary):
         """
