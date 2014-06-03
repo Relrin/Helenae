@@ -73,7 +73,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         handlers['WRTE'] = self.__WRTE
         handlers['DELT'] = self.__DELT
         handlers['RNME'] = self.__RNME
-        handlers['SYNC'] = None
+        handlers['SYNC'] = self.__SYNC
         handlers['LIST'] = self.__LIST
         handlers['EXIT'] = self.__EXIT
         # continues operations...
@@ -82,6 +82,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         handlers['CREA'] = self.__CREA
         handlers['CDLT'] = self.__CDLT
         handlers['CRNM'] = self.__CRNM
+        handlers['CSYN'] = self.__CSYN
         # errors, bans, etc.
         handlers['CREG'] = self.__CREG
         handlers['RREG'] = self.__RREG
@@ -339,6 +340,32 @@ class DFSClientProtocol(WebSocketClientProtocol):
             reactor.stop()
         return data
 
+    def __SYNC(self, data):
+        """
+            Processing for SYNC command
+        """
+        if self.__files is None:
+            data = commands.constructDataClient('AUTH', data['user'], data['password'], True,
+                                                "WARNING: Please, use LIST to get last cashe of your files from server...")
+        else:
+            self.__filenumber = ''
+            lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
+            while self.__filenumber not in lst_file_numbers:
+                self.clear_console()
+                self.print_storage_files()
+                self.__filenumber = self.inputFileNumber()
+            self.__filenumber = int(self.__filenumber) - 1
+            files = [(self.__files[self.__filenumber].original_name, self.__files[self.__filenumber].file_hash)]
+            data = commands.constructDataClient('SYNC', data['user'], data['password'], True, files=files)
+        return data
+
+    def __CSYN(self, data):
+        """
+            Continues SYNC operation
+            NOT COMPLETED!
+        """
+        print data
+
     def clear_console(self):
         # clear console
         if platform.system() == "Linux":
@@ -438,7 +465,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         # for authorized users commands
         else:
             self.clear_console()
-            if data['cmd'] in ['COWF', 'CLST', 'CREA', 'CDLT', 'CRNM']:
+            if data['cmd'] in ['COWF', 'CLST', 'CREA', 'CDLT', 'CRNM', 'CSYN']:
                 continue_cmd = data['cmd']
                 self.commands_handlers[continue_cmd](data)
             if data['error']:
@@ -450,7 +477,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print "Current user: %s" % (data['user'])
             self.mainMenu()
             cmd = ''
-            while cmd not in self.commands.keys() + ['COWF', 'CLST', 'CREA', 'CDLT', 'CRNM']:
+            while cmd not in self.commands.keys() + ['COWF', 'CLST', 'CREA', 'CDLT', 'CRNM', 'CSYN']:
                 cmd = raw_input('Command: ').upper()
                 # not realized function? --> try enter next command and print error
                 if (cmd not in self.commands.keys() or (self.commands_handlers[cmd] is None)):
