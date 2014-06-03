@@ -116,7 +116,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['WRTE'] = self.write_file
         handlers['DELT'] = self.delete_file
         handlers['RNME'] = self.rename_file
-        handlers['SYNC'] = None
+        handlers['SYNC'] = self.fileSync
         handlers['LIST'] = self.get_fs_structure
         return handlers
 
@@ -388,6 +388,12 @@ class DFSServerProtocol(WebSocketServerProtocol):
         del data['new_name']
         return data
 
+    def fileSync(self, data):
+        """
+            Synchronization files using rsync tool
+        """
+        pass
+
     def onMessage(self, payload, isBinary):
         """
             Processing request from user and send response
@@ -424,12 +430,6 @@ class DFSServerProtocol(WebSocketServerProtocol):
                     json_data['error'].append('ERROR: This command is not supported on server...')
             response = dumps(json_data)
         self.sendMessage(str(response))
-
-    def fileSync(self):
-        """
-            Synchronization files using rsync tool
-        """
-        pass
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'debug':
