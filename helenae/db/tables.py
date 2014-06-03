@@ -100,7 +100,7 @@ class FileSpace(Base):
             self.catalog_id.append(catalog)
 
     def __repr__(self):
-        return "<FileSpace('%s','%s')>" % (self.name, self.created_time)
+        return "<FileSpace('%s','%s','%s')>" % (self.id, self.storage_name, self.created_time)
 
 
 class Catalog(Base):

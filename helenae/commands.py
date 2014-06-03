@@ -12,7 +12,7 @@ commands_user = {"AUTH": "autorization with server",
                  "DELT": "delete file from storage",
                  "RNME": "rename file",
                  "LIST": "get list of all files from storage with this user",
-                 #"SYNC": "synchronize all files with storage on the server",
+                 "SYNC": "synchronize files with storage on the server",
                  "EXIT": "disconnect from server or end session"}
 
 commands_handlers_user   = dict((key, None) for key in commands_user.keys())
@@ -47,7 +47,7 @@ def constructBasicJSON():
     return data
 
 
-def constructDataClient(cmd, user, hash_password, auth, error=''):
+def constructDataClient(cmd, user, hash_password, auth, error='', **kwargs):
     """
         Create JSON for server from Client
     """
@@ -58,53 +58,10 @@ def constructDataClient(cmd, user, hash_password, auth, error=''):
     data['auth'] = auth
     if error:
         data['error'].append(error)
+    for item in kwargs.iterkeys():
+        data[item] = kwargs[item]
     return dumps(data)
 
-def constructDataRenameClient(cmd, user, hash_password, auth, file_id, new_name, error=''):
-    """
-        Create JSON for server from Client for RNME operation
-    """
-    data = constructBasicJSON()
-    data['cmd'] = cmd
-    data['user'] = user
-    data['password'] = hash_password
-    data['auth'] = auth
-    data['file_id'] = file_id
-    data['new_name'] = new_name
-    if error:
-        data['error'].append(error)
-    return dumps(data)
-
-def constructFileClient(cmd, user, hash_password, auth, file_fs, error=''):
-    """
-        Create JSON for server from Client (READ/DELETE operation)
-    """
-    data = constructBasicJSON()
-    data['cmd'] = cmd
-    data['user'] = user
-    data['password'] = hash_password
-    data['auth'] = auth
-    data['file'] = file_fs
-    if error:
-        data['error'].append(error)
-    return dumps(data)
-
-
-def constructFileDataByClient(cmd, user, hash_password, auth, file_path, file_size, file_hash, error=''):
-    """
-        Create JSON for WRTE, DELT, READ operations
-    """
-    data = constructBasicJSON()
-    data['cmd'] = cmd
-    data['user'] = user
-    data['password'] = hash_password
-    data['auth'] = auth
-    data['file_path'] = file_path
-    data['file_hash'] = file_hash
-    data['file_size'] = file_size
-    if error:
-        data['error'].append(error)
-    return dumps(data)
 
 def AUTH(result, data):
     error_msg = "[AUTH] User=%s successfully logged..." % data['user']
