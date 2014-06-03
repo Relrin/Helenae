@@ -359,14 +359,17 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 self.print_storage_files()
                 self.__filenumber = self.inputFileNumber()
             self.__filenumber = int(self.__filenumber) - 1
-            files = [(self.__files[self.__filenumber].original_name, self.__files[self.__filenumber].file_hash)]
-            data = commands.constructDataClient('SYNC', data['user'], data['password'], True, files=files)
+            files = [(self.__files[self.__filenumber].original_name, self.__files[self.__filenumber].server_name,
+                      self.__files[self.__filenumber].file_hash)]
+            data = commands.constructDataClient('SYNC', data['user'], data['password'], True, files_u=files)
+            print data
         return data
 
     def __CSYN(self, data):
         """
             Continues SYNC operation
             NOT COMPLETED!
+            create connection to server with rsync module and get updates...
         """
         print data
 
@@ -458,7 +461,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
         data = loads(payload)
         # for none-authorized users commands
-        if data['auth'] == False:
+        if data['auth'] is False:
             cmd = data['cmd']
             # not realized function? --> try enter next command and print error
             if (self.commands_handlers[cmd] is None):
