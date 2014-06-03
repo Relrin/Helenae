@@ -23,19 +23,20 @@ class Balancer(BaseBalancer):
         handlers['WRTE'] = self.__returnRandomServer
         handlers['READ'] = self.__returnRandomServer
         handlers['DELT'] = self.__returnRandomServer
+        handlers['SYNC'] = self.__returnRandomServer
         return handlers
 
     def __deleteOffline(self):
         """
             Deleting from temporary list offline servers
         """
-        self.lstFS = filter(lambda data: data[2]!='OFFLINE', self.lstFS)
+        self.lstFS = filter(lambda data: data[2] != 'OFFLINE', self.lstFS)
 
     def __deleteBusy(self):
         """
             Deleting from temporary list all servers at busy state
         """
-        self.lstFS = filter(lambda data: data[2]!='BUSY', self.lstFS)
+        self.lstFS = filter(lambda data: data[2] != 'BUSY', self.lstFS)
 
     def __returnRandomServer(self, hash_file):
         """
