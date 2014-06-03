@@ -1,4 +1,4 @@
-Helenea
+Helenae
 =======
 
 Simplest analog of distributed file storages such as DropBox/SugarSync/etc.
@@ -12,7 +12,6 @@ Using
 - OpenSSL
 - SQLAlchemy ORM
 - Flask
-- rsync
 
 Running
 -------
