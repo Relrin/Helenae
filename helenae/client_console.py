@@ -360,9 +360,15 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 self.__filenumber = self.inputFileNumber()
             self.__filenumber = int(self.__filenumber) - 1
             files = [(self.__files[self.__filenumber].original_name, self.__files[self.__filenumber].server_name,
-                      self.__files[self.__filenumber].file_hash)]
-            data = commands.constructDataClient('SYNC', data['user'], data['password'], True, files_u=files)
-            print data
+                    self.__files[self.__filenumber].file_hash)]
+            op_type = 'Unknown'
+            while op_type not in ('WSYNC', 'RSYNC'):
+                self.clear_console()
+                self.print_sync_operations()
+                op_type = raw_input('Command:').upper()
+            op_type += '_FILE'
+            data = commands.constructDataClient('SYNC', data['user'], data['password'], True,
+                                                files_u=files, sync_type=op_type)
         return data
 
     def __CSYN(self, data):
@@ -371,7 +377,44 @@ class DFSClientProtocol(WebSocketClientProtocol):
             NOT COMPLETED!
             create connection to server with rsync module and get updates...
         """
-        print data
+        after_sync = []
+        for data_file in data['server']:
+            file_path = ''
+            file_format_db = data_file[0].split('.')[-1]
+            # checking entered path by user
+            while file_path == '':
+                self.clear_console()
+                print 'NOTE: file shall be have equals format!'
+                print 'Enter path to file, which using to store information:'
+                file_path = raw_input('Path to %s:' % (data_file[0]))
+                file_format = file_path.split('/')[-1].split('.')[-1]
+                if len(file_format[0]) == 0:
+                    file_path = ''
+                if file_format != file_format_db:
+                    file_path = ''
+                if not os.path.exists(file_path):
+                    file_path = ''
+            if data_file[2] is None:
+                after_sync.append([data_file[0],'Cant sync, because server is unavailable!'])
+            else:
+                server_ip = str(data_file[2])
+                server_port = str(data_file[3])
+                json_file = str('./fsc_' + data['user'] + '_' + str(randint(0, 100000)) + '.json')
+                with open(json_file, 'w+') as f:
+                    dict_json = {"cmd": data['sync_type'], "user": data['user_id'],
+                                 "file_id": data_file[1], "src_file": file_path}
+                    dump(dict_json, f)
+                self.__SendInfoToFileServer(json_file, server_ip, server_port)
+                after_sync.append([data_file[0],'Sync is complete!'])
+        self.clear_console()
+        print "--------------------------------"
+        for info in after_sync:
+            print "[%s] %s" % (info[0], info[1])
+        print "--------------------------------"
+        del data['user_id']
+        del data['server']
+        del data['sync_type']
+        return data
 
     def clear_console(self):
         # clear console
@@ -391,6 +434,16 @@ class DFSClientProtocol(WebSocketClientProtocol):
         for (id_enum, file_storage) in enumerate(self.__files):
             file_size = commands.convertSize(file_storage.chunk_size)
             print "%d. %s\t[Size: %s]" % (id_enum + 1, file_storage.original_name, str(file_size))
+        print "--------------------------------"
+
+    def print_sync_operations(self):
+        """
+            Display all supported sync commands on server
+        """
+        print "--------------------------------"
+        print "Supported syncronization commands:"
+        print "WSYNC - write changes into the server"
+        print "RSYNC - read file on changes on the server"
         print "--------------------------------"
 
     def mainMenu(self):
