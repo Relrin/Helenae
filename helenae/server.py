@@ -395,25 +395,22 @@ class DFSServerProtocol(WebSocketServerProtocol):
         try:
             server = None
             session = self.__create_session()
+            user_db = session.execute(sqlalchemy.select([Users])
+                                                .where(Users.name == data['user'])
+                                     ).fetchone()
+            user_id = 'u' + str(user_db.id).rjust(14, '0')
             # when want to sync more than one file...
-            if len(data['files_u']) > 1:
-                server = []
-                for file in data['files_u']:
-                    original_name = file[0]
-                    server_name = file[1]
-                    file_hash = file[2]
-                    fs = self.balancer.getFileServer(data['cmd'], file_hash)
-                    server.append((original_name, server_name) + (fs if fs else (None,)))
-            # and want to sync only one file...
-            else:
-                original_name = data['files_u'][0][0]
-                server_name = data['files_u'][0][1]
-                file_hash = data['files_u'][0][2]
+            server = []
+            for file in data['files_u']:
+                original_name = file[0]
+                server_name = file[1]
+                file_hash = file[2]
                 fs = self.balancer.getFileServer(data['cmd'], file_hash)
-                server = [(original_name, server_name) + (fs if fs else (None,))]
+                server.append((original_name, server_name) + (fs if fs else (None,)))
             data['server'] = server
+            data['user_id'] = user_id
             data['cmd'] = 'CSYN'
-            log.msg('[SYNC] Delete data for User=%s has complete!' % (data['user']))
+            log.msg('[SYNC] SYNC data for User=%s has complete!' % (data['user']))
         except sqlalchemy.exc.ArgumentError:
             log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
         except sqlalchemy.exc.CompileError:
