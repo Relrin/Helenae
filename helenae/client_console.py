@@ -374,8 +374,6 @@ class DFSClientProtocol(WebSocketClientProtocol):
     def __CSYN(self, data):
         """
             Continues SYNC operation
-            NOT COMPLETED!
-            create connection to server with rsync module and get updates...
         """
         after_sync = []
         for data_file in data['server']:
