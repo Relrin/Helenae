@@ -1,4 +1,4 @@
-from helenae.balancer.base_balancer import BaseBalancer
+from base_balancer import BaseBalancer
 
 
 class Balancer(BaseBalancer):
