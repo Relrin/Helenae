@@ -8,11 +8,11 @@ from twisted.internet.task import deferLater
 from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
 
+from utils import rsync
 
 # TODO: Add Twisted logger
 # TODO: Create plugin for fileserver (using twistd)
 # TODO: Thinking about using SSL over my WebSockets message-based protocol (OR using AES algorithm?)
-from helenae.utils import rsync
 
 CONFIG_IP = 'localhost'
 CONFIG_PORT = 8888
@@ -20,8 +20,9 @@ CONFIG_TEMPLATE = ''
 CONFIG_DATA = {}
 BATCH_SIZE = 1 * 2 ** 20
 
+
 def sendPrefences(port):
-    p = Popen(["python", "preferences_sender.py", str(CONFIG_TEMPLATE), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    p = Popen(["python", "./utils/preferences_sender.py", str(CONFIG_TEMPLATE), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
     result = p.communicate()[0]
 
 
