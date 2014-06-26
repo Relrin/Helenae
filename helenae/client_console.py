@@ -13,12 +13,13 @@ from twisted.python import log
 from twisted.internet import reactor, ssl
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
-import commands
+from utils import commands
 
 # TODO: Create plugins for future commands
 # TODO: Define commands for USER (auth, read/write/sync files, etc.)
 # TODO: Add methods/commands into DFSClientProtocol
 # TODO: Add response after write/read/delete/etc.
+
 
 def md5_for_file(file_path, block_size=8192):
     """
@@ -90,7 +91,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         return handlers
 
     def __SendInfoToFileServer(self, json_path, ip, port):
-        p = Popen(["python", "./fileserver/fileserver_client.py", str(json_path), str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        p = Popen(["python", "./fileserver_client.py", str(json_path), str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
         result = p.communicate()[0]
 
     def __CREG(self):
@@ -214,6 +215,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
                     file_path = ''
                 if os.path.exists(file_path):
                     file_path = ''
+                self.clear_console()
             json_file = str('./fsc_' + data['user'] + '_' + str(randint(0, 100000)) + '.json')
             with open(json_file, 'w+') as f:
                 dict_json = {"cmd": "READU_FILE", "user": user_id,

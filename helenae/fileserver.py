@@ -8,7 +8,7 @@ from twisted.internet.task import deferLater
 from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
 
-import rsync
+from utils import rsync
 
 # TODO: Add Twisted logger
 # TODO: Create plugin for fileserver (using twistd)
@@ -18,10 +18,11 @@ CONFIG_IP = 'localhost'
 CONFIG_PORT = 8888
 CONFIG_TEMPLATE = ''
 CONFIG_DATA = {}
+BATCH_SIZE = 1 * 2 ** 20
 
 
 def sendPrefences(port):
-    p = Popen(["python", "preferences_sender.py", str(CONFIG_TEMPLATE), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    p = Popen(["python", "./utils/preferences_sender.py", str(CONFIG_TEMPLATE), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
     result = p.communicate()[0]
 
 
@@ -45,7 +46,7 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
                 os.mkdir(base_dir)
                 os.chdir(base_dir)
         else:
-            os.makedir(path)
+            os.mkdir(path)
             os.chdir(path)
             os.mkdir(base_dir)
             os.chdir(base_dir)
@@ -228,7 +229,7 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
         """
             Processing request from user and send response
         """
-        user_id, cmd, file_id = payload[:54].replace('[', '').replace(']','').split(':')
+        user_id, cmd, file_id = payload[:54].replace('[', '').replace(']', '').split(':')
         data = payload[54:]
         operation, status, commentary = "UNK", "C", "Successfull!"
         if cmd in ('WRITE_FILE', 'READU_FILE', 'DELET_FILE', 'STATUS_SRV', 'RSYNC_FILE', 'WSYNC_FILE', 'WCSYN_FILE'):

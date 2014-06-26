@@ -17,11 +17,11 @@ from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
 
-import commands
-from balancer import Balancer
+from balancer.balancer import Balancer
 from db.tables import File as FileTable
 from db.tables import Users, FileServer, FileSpace, Catalog
 from flask_app import app
+from utils import commands
 
 
 # TODO: Create PLUGIN architecture (using twistd)
@@ -38,8 +38,8 @@ def checkServerStatus(ip, port):
         File server status checker
         After communication return result as string "IP|PORT|STATUS"
     """
-    p = Popen(["python", "./fileserver/statuschecker.py", str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-    result = p.communicate()[0].replace('\n','')
+    p = Popen(["python", "./utils/statuschecker.py", str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    result = p.communicate()[0].replace('\n', '')
     return result.split('|')
 
 
@@ -426,7 +426,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
         json_data = loads(payload)
         json_auth = json_data['auth']
-        json_cmd  = json_data['cmd']
+        json_cmd = json_data['cmd']
         # if this fileserver
         if json_cmd == 'FSRV' and json_data['user'] == 'FS' and json_auth is True:
             ip = self.transport.getPeer()
@@ -435,7 +435,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         else:
             # add there checking in DB for banned user or not...
             # for none-authorized users
-            if json_auth == False:
+            if json_auth is False:
                 # first action with server --> authorization
                 if json_cmd == 'AUTH':
                     json_data = self.commands_handlers['AUTH'](json_data)
@@ -479,5 +479,5 @@ if __name__ == '__main__':
     resource = WSGIResource(reactor, reactor.getThreadPool(), app)
     site = Site(resource)
     reactor.listenSSL(8080, site, contextFactory)
-    #reactor.listenTCP(8080, web)
+    # reactor.listenTCP(8080, web)
     reactor.run()
