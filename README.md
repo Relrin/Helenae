@@ -21,7 +21,7 @@ For start working with distributed file storage you will need:
 
     python server.py 9000
 
-2) start few (minimum one) file servers from /fileserver/ folder
+2) Start few (minimum one) file servers from /fileserver/ folder
 
     # take example of fs.json
     python fileserver.py PATH_TO_config.json_FILE PORT
