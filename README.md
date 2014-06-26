@@ -17,14 +17,14 @@ Running
 -------
 
 For start working with distributed file storage you will need:  
-1) start few (minimum one) file servers from /fileserver/ folder
-
-    # take example of fs.json in /fileserver/ folder
-    python fileserver.py PATH_TO_config.json_FILE PORT
-
-2) Run the server.py by doing
+1) Run the server.py by doing
 
     python server.py 9000
+
+1) start few (minimum one) file servers from /fileserver/ folder
+
+    # take example of fs.json
+    python fileserver.py PATH_TO_config.json_FILE PORT
 
 3) Open in your browser
 
