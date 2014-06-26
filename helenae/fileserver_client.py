@@ -6,8 +6,7 @@ from ast import literal_eval
 from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
-from helenae.utils import rsync
-
+from utils import rsync
 
 CONFIG_TEMPLATE = ''
 CONFIG_DATA = {}
