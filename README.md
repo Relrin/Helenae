@@ -12,6 +12,8 @@ Using
 - OpenSSL
 - SQLAlchemy ORM
 - Flask
+- pytest
+- wxPython
 
 Running
 -------
@@ -55,3 +57,11 @@ Certificate:
 
 	server.crt
 
+Thanks
+-------------------------------------
+
+Big thanks to:
+- Jean-Paul Calderone [creator of Twisted] for help and advices on event-based programming with Twisted
+- Tobias Oberstein [creator of Autobahn.ws] for programming tips on Autobahn.ws
+
+Especially thanks http://www.fatcow.com/ for free icons
