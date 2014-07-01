@@ -4,13 +4,14 @@
     Example of using:
         import os
         password = os.urandom(16).encode('hex')
-        with open(in_filename, 'rb') as in_file, open(out_filename, 'wb') as out_file:
-            funct = encrypt(in_file, password, key_length=16)
-            for chunk in func:
+        with open(in_filename, 'rb') as in_file, open(enc_filename", 'wb') as out_file:
+            for chunk in encrypt(in_file, password, key_length=16):
                 out_file.write(chunk)
-        with open(in_filename, 'rb') as in_file, open(out_filename, 'wb') as out_file:
-            for chunk in decrypt(in_file, out_file, password, key_length=16):
-                out_file.write(chunk)
+        with open(enc_filename, 'rb') as in_file:
+            text = in_file.read()
+            with open(decoded_filename, 'wb') as out_file:
+                for chunk in decrypt(text, password, key_length=16):
+                    out_file.write(chunk)
 """
 
 # TODO: create test, bases on http://www.inconteam.com/software-development/41-encryption/55-aes-test-vectors
@@ -52,7 +53,7 @@ def encrypt(in_file, password, key_length=32):
         yield cipher.encrypt(chunk)
 
 
-def decrypt(in_file, password, key_length=32):
+def decrypt(text, password, key_length=32):
     """
         Decrypt file
 
@@ -62,15 +63,21 @@ def decrypt(in_file, password, key_length=32):
         :return: decrypted chunks
     """
     bs = AES.block_size
-    salt = in_file.read(bs)[len('Salted__'):]
+    salt = (text[:bs])[len('Salted__'):]
+    text = text[bs:]
     key, iv = derive_key_and_iv(password, salt, key_length, bs)
     cipher = AES.new(key, AES.MODE_CBC, iv)
     next_chunk = ''
     finished = False
+    counter_block = 1
     while not finished:
-        chunk, next_chunk = next_chunk, cipher.decrypt(in_file.read(1024 * bs))
+        start = (counter_block - 1) * 1024 * bs
+        end = counter_block * 1024 * bs
+        chunk, next_chunk = next_chunk, cipher.decrypt(text[start:end])
         if len(next_chunk) == 0:
             padding_length = ord(chunk[-1])
             chunk = chunk[:-padding_length]
             finished = True
+        counter_block += 1
         yield chunk
+
