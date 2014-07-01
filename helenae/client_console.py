@@ -16,9 +16,6 @@ from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientPr
 from utils import commands
 
 # TODO: Create plugins for future commands
-# TODO: Define commands for USER (auth, read/write/sync files, etc.)
-# TODO: Add methods/commands into DFSClientProtocol
-# TODO: Add response after write/read/delete/etc.
 
 
 def md5_for_file(file_path, block_size=8192):
@@ -101,6 +98,17 @@ class DFSClientProtocol(WebSocketClientProtocol):
         print "Registration has complete! Now you can connecting to DFS..."
         reactor.stop()
 
+    def __input_password(self):
+        password = ''
+        self.clear_console()
+        while not password:
+            print 'Enter secret key to file, which used for encrypting.'
+            print 'NOTE: your password cant contains ~ symbol!'
+            password = getpass.getpass('Password to file:')
+            if password.find('~') != -1:
+                password = ''
+        return password.rjust(32, '~')
+
     def __AUTH(self, data):
         """
             Processing for AUTH command
@@ -134,9 +142,13 @@ class DFSClientProtocol(WebSocketClientProtocol):
         json_file = str('./fsc_' + data['user'] + '_' + str(randint(0, 100000)) + '.json')
         with open(json_file, 'w+') as f:
             dict_json = {"cmd": data['json'][0], "user": data['json'][1],
-                         "file_id": data['json'][2], "src_file": data['json'][3]}
+                         "file_id": data['json'][2], "src_file": data['json'][3],
+                         "password": self.__input_password()}
+            self.clear_console()
+            print 'Processing...'
             dump(dict_json, f)
         self.__SendInfoToFileServer(json_file,server_ip,server_port)
+        self.clear_console()
         self.__clearCashe()
         data['cmd'] = 'AUTH'
         del data['server']
@@ -219,10 +231,13 @@ class DFSClientProtocol(WebSocketClientProtocol):
             json_file = str('./fsc_' + data['user'] + '_' + str(randint(0, 100000)) + '.json')
             with open(json_file, 'w+') as f:
                 dict_json = {"cmd": "READU_FILE", "user": user_id,
-                             "file_id": file_id, "src_file": file_path}
+                             "file_id": file_id, "src_file": file_path,
+                             "password": self.__input_password()}
+                print "Processing..."
                 dump(dict_json, f)
             # stating second subprocess
             self.__SendInfoToFileServer(json_file, server_ip, server_port)
+            self.clear_console()
         self.__filenumber = None
         data['cmd'] = 'AUTH'
 
@@ -263,10 +278,13 @@ class DFSClientProtocol(WebSocketClientProtocol):
             json_file = str('./fsc_' + data['user'] + '_' + str(randint(0, 100000)) + '.json')
             with open(json_file, 'w+') as f:
                 dict_json = {"cmd": "DELET_FILE", "user": user_id,
-                             "file_id": file_id, "src_file": ''}
+                             "file_id": file_id, "src_file": '', "password":"test"}
                 dump(dict_json, f)
             # stating second subprocess
+            self.clear_console()
+            print "Processing..."
             self.__SendInfoToFileServer(json_file, server_ip, server_port)
+            self.clear_console()
         self.__filenumber = None
         self.__clearCashe()
         data['cmd'] = 'AUTH'
@@ -402,8 +420,11 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 json_file = str('./fsc_' + data['user'] + '_' + str(randint(0, 100000)) + '.json')
                 with open(json_file, 'w+') as f:
                     dict_json = {"cmd": data['sync_type'], "user": data['user_id'],
-                                 "file_id": data_file[1], "src_file": file_path}
+                                 "file_id": data_file[1], "src_file": file_path,
+                                 "password":self.__input_password()}
                     dump(dict_json, f)
+                self.clear_console()
+                print "Processing..."
                 self.__SendInfoToFileServer(json_file, server_ip, server_port)
                 after_sync.append([data_file[0],'Sync is complete!'])
         self.clear_console()
@@ -499,11 +520,11 @@ class DFSClientProtocol(WebSocketClientProtocol):
             login, password, fullname, email = self.inputDataNewUser()
             data = dumps({'cmd': 'REGS', 'user': login, 'password': password, 'auth': False, 'error': [],
                           'email': email, 'fullname': fullname})
-            self.sendMessage(str(data))
+            self.sendMessage(str(data), sync=True)
         if cmd == 'AUTH':
             login, password = self.inputData()
             data = dumps({'cmd': 'AUTH', 'user': login, 'password': password, 'auth': False, 'error': []})
-            self.sendMessage(str(data))
+            self.sendMessage(str(data), sync=True)
         if cmd == 'EXIT':
             reactor.stop()
 
@@ -546,7 +567,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             # fetch and execute command
             data = self.commands_handlers[cmd](data)
         # send new request for server in JSON
-        self.sendMessage(str(data))
+        self.sendMessage(str(data), sync=True)
 
 
 if __name__ == '__main__':
