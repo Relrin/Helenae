@@ -1,15 +1,16 @@
 import json
 import sys
 import os
-from ast import literal_eval
 
 from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
 from utils import rsync
+from utils.crypto import aes
 
 CONFIG_TEMPLATE = ''
 CONFIG_DATA = {}
+CONFIG_PASSWORD = ''
 
 
 class MessageBasedClientProtocol(WebSocketClientProtocol):
@@ -31,26 +32,21 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
         operation_name = CONFIG_DATA['cmd']
         file_id = CONFIG_DATA['file_id']
         src_file = CONFIG_DATA['src_file']
-        data = '[' + str(user_id) + ':' + str(operation_name) + ':' + str(file_id) + ']'
+        data = '[' + str(user_id) + ':' + str(operation_name) + ':' + str(file_id) + ':' + str(CONFIG_PASSWORD) + ']'
         # get data for write operations
-        if operation_name == 'WRITE_FILE':
-            with open(src_file, "r") as f:
-                info = f.read()
-            data += str(info)
-        # or try to get information for sync operations
-        elif operation_name == 'RSYNC_FILE':
-            self.file_1 = open(src_file, "rb")
-            hashes = rsync.blockchecksums(self.file_1)
-            data += str(hashes)
-        self.sendMessage(data, isBinary=True)
+        if operation_name in ('WRITE_FILE', 'WSYNC_FILE'):
+            with open(src_file, "rb") as in_file:
+                for chunk in aes.encrypt(in_file, str(CONFIG_PASSWORD), key_length=32):
+                    data += chunk
+        self.sendMessage(data, isBinary=True, sync=True)
 
     def __initHandlersUser(self):
         handlers = {}
         handlers['WRT'] = self.print_payload
         handlers['DEL'] = self.print_payload
         handlers['REA'] = self.read_command
-        handlers['RSY'] = self.read_sync
-        handlers['WSY'] = self.write_sync
+        handlers['RSY'] = self.rsync_file
+        handlers['WSY'] = self.print_payload
         handlers['SYC'] = self.print_payload
         return handlers
 
@@ -65,9 +61,10 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
     def read_command(self, payload):
         if self.result_cmd == 'C':
             try:
-                data = payload[8:]
-                f = open(CONFIG_DATA['src_file'], "wb")
-                f.write(data)
+                text = payload[8:]
+                with open(CONFIG_DATA['src_file'], 'wb') as out_file:
+                    for chunk in aes.decrypt(text, str(CONFIG_PASSWORD), key_length=32):
+                        out_file.write(chunk)
             except IOError, e:
                 print e
             except Exception, e:
@@ -79,33 +76,46 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
             self.print_payload(payload)
         self.stop_and_delete_config()
 
-    def read_sync(self, payload):
-        self.delta_sync = literal_eval(payload[8:])
-        self.file_1.seek(0)
-        path_parts = CONFIG_DATA['src_file'].split('/')
-        path_parts[-1] = 'swap-' + path_parts[-1]
-        full_swap_filepath = '/'.join(path_parts)
-        self.file_2 = open(full_swap_filepath, "wb")
-        rsync.patchstream(self.file_1, self.file_2, self.delta_sync)
-        self.file_1.close()
-        self.file_2.close()
-        os.remove(CONFIG_DATA['src_file'])
-        os.rename(full_swap_filepath, CONFIG_DATA['src_file'])
-        self.file_1 = self.file_2 = self.delta_sync = None
-        self.stop_and_delete_config()
+    def rsync_file(self, payload):
+        if self.result_cmd == 'C':
+            try:
+                unpatched = open(CONFIG_DATA['src_file'], "rb")
+                hashes = rsync.blockchecksums(unpatched)
 
-    def write_sync(self, payload):
-        hashes = literal_eval(payload[8:])
-        data = '[' + str(CONFIG_DATA['user']) + ':' + "WCSYN_FILE" + ':' + str(CONFIG_DATA['file_id']) + ']'
-        try:
-            patchedfile = open(CONFIG_DATA['src_file'], "rb")
-            data += str(rsync.rsyncdelta(patchedfile, hashes))
-        except IOError, argument:
-            print argument.message
-        except Exception, argument:
-            print argument.message
-            raise Exception(argument)
-        self.sendMessage(data, isBinary=True)
+                new_file = CONFIG_DATA['src_file'] + '.new'
+                swap_path = CONFIG_DATA['src_file'] + '~'
+                text = payload[8:]
+                with open(swap_path, 'wb') as out_file:
+                    for chunk in aes.decrypt(text, str(CONFIG_PASSWORD), key_length=32):
+                        out_file.write(chunk)
+
+                patchedfile = open(swap_path, "rb")
+                delta = rsync.rsyncdelta(patchedfile, hashes)
+
+                unpatched.seek(0)
+                save_to = open(new_file, "wb")
+                rsync.patchstream(unpatched, save_to, delta)
+
+                save_to.close()
+                patchedfile.close()
+                unpatched.close()
+
+                if os.path.exists(CONFIG_DATA['src_file']):
+                    os.remove(CONFIG_DATA['src_file'])
+
+                os.rename(new_file, CONFIG_DATA['src_file'])
+
+                if os.path.exists(swap_path):
+                    os.remove(swap_path)
+            except IOError, e:
+                print e
+            except Exception, e:
+                raise Exception(e)
+            finally:
+                print payload[:8] + "Successfully!"
+        else:
+            self.print_payload(payload)
+        self.stop_and_delete_config()
 
     def onMessage(self, payload, isBinary):
         cmd = payload[1:4]
@@ -124,6 +134,7 @@ if __name__ == '__main__':
                 CONFIG_DATA = json.load(f)
             CONFIG_IP = sys.argv[2]
             CONFIG_PORT = int(sys.argv[3])
+            CONFIG_PASSWORD = CONFIG_DATA['password']
         except ValueError:
             print 'PLEASE, enter correct information about server...'
             sys.exit(1)
