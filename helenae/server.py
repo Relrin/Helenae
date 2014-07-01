@@ -455,7 +455,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                     json_data['auth'] = False
                     json_data['error'].append('ERROR: This command is not supported on server...')
             response = dumps(json_data)
-        self.sendMessage(str(response))
+        self.sendMessage(str(response), sync=True)
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'debug':
