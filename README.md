@@ -14,6 +14,7 @@ Using
 - Flask
 - pytest
 - wxPython
+- PyCrypto
 
 Running
 -------
