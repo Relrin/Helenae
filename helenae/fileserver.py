@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-from ast import literal_eval
 from subprocess import Popen, PIPE, STDOUT
 
 from twisted.internet.task import deferLater
@@ -30,9 +29,10 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
     """
         Message-based WebSockets server
         Template contains some parts as string:
-        [USER_ID:OPERATION_NAME:FILE_ID] -  15 symbols for USER_ID,
-                                            10 symbols for OPERATION_NAME,
-                                            25 symbols for FILE_ID
+        [USER_ID:OPERATION_NAME:FILE_ID:FILE_ENC_PASSWORD] - 15 symbols for USER_ID,
+                                                             10 symbols for OPERATION_NAME,
+                                                             25 symbols for FILE_ID
+                                                             32 symbols for FILE_ENC_PASSWORD
         other - some data
     """
 
@@ -55,6 +55,7 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
         self.status = 'ONLINE'
         self.commands_handlers = self.__initHandlersUser()
         self.file_1 = self.file_2 = self.delta_sync = None
+        self.file_enc_psw = None
 
     def __initHandlersUser(self):
         """
@@ -67,7 +68,6 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
         handlers['STATUS_SRV'] = self.status_server
         handlers['RSYNC_FILE'] = self.rsync_file
         handlers['WSYNC_FILE'] = self.wsync_file
-        handlers['WCSYN_FILE'] = self.wsync_file_continues
         return handlers
 
     def __checkUserCatalog(self, user_id):
@@ -142,23 +142,15 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
         self.status = 'ONLINE'
         return operation, status, commentary
 
-    def status_server(self, user_id, file_id, data):
-        print "[SERV] Server with %s getting fileserver status..." % (self.transport.getPeer())
-        status = "C"
-        operation = "STS"
-        commentary = self.status
-        return operation, status, commentary
-
     def rsync_file(self, user_id, file_id, data):
         print "[USER] User with %s sync files..." % (self.transport.getPeer())
-        hashes = literal_eval(data)
         status, commentary = self.__get_standart_states()
         self.__checkUserCatalog(user_id)
         self.status = 'BUSY'
         operation = "RSY"
         try:
-            patchedfile = open(file_id, "rb")
-            commentary = str(rsync.rsyncdelta(patchedfile, hashes))
+            f = open(file_id, "rb")
+            commentary = f.read()
         except IOError, argument:
             status = "E"
             commentary = argument
@@ -174,11 +166,34 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
         status, commentary = self.__get_standart_states()
         self.__checkUserCatalog(user_id)
         self.status = 'BUSY'
-        operation = "WSY"
+        operation = "WRT"
         try:
-            self.file_1 = open(file_id, "rb")
-            hashes = rsync.blockchecksums(self.file_1)
-            commentary = str(hashes)
+            unpatched = open(file_id, "rb")
+            hashes = rsync.blockchecksums(unpatched)
+
+            new_file = file_id + '.new'
+            swap_path = file_id + '~'
+            with open(swap_path, "wb") as out_file:
+                out_file.write(data)
+
+            patchedfile = open(swap_path, "rb")
+            delta = rsync.rsyncdelta(patchedfile, hashes)
+
+            unpatched.seek(0)
+            save_to = open(new_file, "wb")
+            rsync.patchstream(unpatched, save_to, delta)
+
+            save_to.close()
+            patchedfile.close()
+            unpatched.close()
+
+            if os.path.exists(file_id):
+                os.remove(file_id)
+
+            os.rename(new_file, file_id)
+
+            if os.path.exists(swap_path):
+                os.remove(swap_path)
         except IOError, argument:
             status = "E"
             commentary = argument
@@ -186,37 +201,16 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
             status = "E"
             commentary = argument
             raise Exception(argument)
+        finally:
+            print 'WSYNC was ended successfully!'
         self.status = 'ONLINE'
         return operation, status, commentary
 
-    def wsync_file_continues(self, user_id, file_id, data):
-        print "[USER] User with %s. Final step for sync with file..." % (self.transport.getPeer())
-        status, commentary = self.__get_standart_states()
-        self.__checkUserCatalog(user_id)
-        self.status = 'BUSY'
-        operation = "SYC"
-        try:
-            self.delta_sync = literal_eval(data)
-            self.file_1.seek(0)
-            path_parts = file_id.split('/')
-            path_parts[-1] = 'swap-' + path_parts[-1]
-            full_swap_filepath = '/'.join(path_parts)
-            self.file_2 = open(full_swap_filepath, "wb")
-            rsync.patchstream(self.file_1, self.file_2, self.delta_sync)
-            self.file_1.close()
-            self.file_2.close()
-            os.remove(file_id)
-            os.rename(full_swap_filepath, file_id)
-        except IOError, argument:
-            status = 'E'
-            print argument.message
-        except Exception, argument:
-            status = 'E'
-            print argument.message
-            raise Exception(argument)
-        finally:
-            self.file_1 = self.file_2 = self.delta_sync = None
-        self.status = 'ONLINE'
+    def status_server(self, user_id, file_id, data):
+        print "[SERV] Server with %s getting fileserver status..." % (self.transport.getPeer())
+        status = "C"
+        operation = "STS"
+        commentary = self.status
         return operation, status, commentary
 
     def onOpen(self):
@@ -229,13 +223,14 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
         """
             Processing request from user and send response
         """
-        user_id, cmd, file_id = payload[:54].replace('[', '').replace(']', '').split(':')
-        data = payload[54:]
+        user_id, cmd, file_id, self.file_enc_psw = payload[:87].replace('[', '').replace(']', '').split(':')
+        self.file_enc_psw = self.file_enc_psw.replace('~', '')
+        data = payload[87:]
         operation, status, commentary = "UNK", "C", "Successfull!"
-        if cmd in ('WRITE_FILE', 'READU_FILE', 'DELET_FILE', 'STATUS_SRV', 'RSYNC_FILE', 'WSYNC_FILE', 'WCSYN_FILE'):
+        if cmd in ('WRITE_FILE', 'READU_FILE', 'DELET_FILE', 'STATUS_SRV', 'RSYNC_FILE', 'WSYNC_FILE'):
             operation, status, commentary = self.commands_handlers[cmd](user_id, file_id, data)
-        self.sendMessage('[%s][%s]%s' % (operation, status, commentary), isBinary=True)
-
+        self.file_enc_psw = None
+        self.sendMessage('[%s][%s]%s' % (operation, status, commentary), isBinary=True, sync=True)
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:

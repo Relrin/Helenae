@@ -18,9 +18,10 @@ class StatusCheckerProtocol(WebSocketClientProtocol):
         self.operation_name = "STATUS_SRV"
         self.user_id = 'u00000000000000'
         self.file_id = "000000000000000000000.log"
+        self.psw_test = "testtesttesttesttesttesttesttest"
 
     def onOpen(self):
-        data = '[' + str(self.user_id) + ':' + str(self.operation_name) + ':' + str(self.file_id) + ']'
+        data = '[' + str(self.user_id) + ':' + str(self.operation_name) + ':' + str(self.file_id) + ':' + str(self.psw_test) + ']'
         self.sendMessage(data, isBinary=True)
 
     def onMessage(self, payload, isBinary):
