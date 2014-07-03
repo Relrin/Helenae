@@ -36,6 +36,10 @@ For start working with distributed file storage you will need:
 or run the Python console client
 
     python client_console.py 9000
+    
+or run the Python GUI client
+
+    python client_gui.py
 
 
 Creating Server Keys and Certificates
