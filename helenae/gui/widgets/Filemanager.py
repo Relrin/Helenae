@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-
-import wx
 import os
+import wx
 
-from widgets.FileListCtrl import FileListCtrl
+from FileListCtrl import FileListCtrl
 
 
 ID_BUTTON = 100
@@ -19,7 +18,7 @@ ID_SPLITTER = 300
 # TODO: save JSON configs in temp folder
 # TODO: save part info (about catalog structure) in XML
 
-class CloudStorage(wx.Frame):
+class FileManager(wx.Frame):
     def __init__(self, parent, id, title):
         wx.Frame.__init__(self, parent, -1, title)
 
@@ -100,8 +99,8 @@ class CloudStorage(wx.Frame):
         self.sb.SetStatusText(os.getcwd())
         self.Center()
 
-    def OnExit(self,e):
-        self.Close(True)
+    def OnExit(self, event):
+        self.Close()
 
     def OnSize(self, event):
         size = self.GetSize()
@@ -115,6 +114,6 @@ class CloudStorage(wx.Frame):
 
 if __name__ == '__main__':
     app = wx.App(0)
-    frame = CloudStorage(None, -1, 'CloudStorage')
+    frame = FileManager(None, -1, 'CloudStorage')
     frame.Show(True)
     app.MainLoop()
