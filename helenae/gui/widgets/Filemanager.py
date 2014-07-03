@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-
-import wx
 import os
+import wx
 
-from widgets.FileListCtrl import FileListCtrl
+from FileListCtrl import FileListCtrl
 
 
 ID_BUTTON = 100
@@ -19,7 +18,7 @@ ID_SPLITTER = 300
 # TODO: save JSON configs in temp folder
 # TODO: save part info (about catalog structure) in XML
 
-class CloudStorage(wx.Frame):
+class FileManager(wx.Frame):
     def __init__(self, parent, id, title):
         wx.Frame.__init__(self, parent, -1, title)
 
@@ -47,7 +46,6 @@ class CloudStorage(wx.Frame):
         menuBar.Append(configmenu, "&Настройка")
         menuBar.Append(helpmenu, "&Помощь")
         self.SetMenuBar(menuBar)
-        self.Bind(wx.EVT_MENU, self.OnExit, id=ID_EXIT)
 
         # toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT)
@@ -82,8 +80,6 @@ class CloudStorage(wx.Frame):
         self.sizer2.Add(button7, 1, wx.EXPAND)
         self.sizer2.Add(button8, 1, wx.EXPAND)
 
-        self.Bind(wx.EVT_BUTTON, self.OnExit, id=ID_EXIT)
-
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.splitter,1,wx.EXPAND)
         self.sizer.Add(self.sizer2,0,wx.EXPAND)
@@ -100,8 +96,8 @@ class CloudStorage(wx.Frame):
         self.sb.SetStatusText(os.getcwd())
         self.Center()
 
-    def OnExit(self,e):
-        self.Close(True)
+    def OnExit(self, event):
+        self.Close()
 
     def OnSize(self, event):
         size = self.GetSize()
@@ -115,6 +111,6 @@ class CloudStorage(wx.Frame):
 
 if __name__ == '__main__':
     app = wx.App(0)
-    frame = CloudStorage(None, -1, 'CloudStorage')
+    frame = FileManager(None, -1, 'CloudStorage')
     frame.Show(True)
     app.MainLoop()
