@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
     Implementation of GUI client for Helenae project.
     At this file, as you can see, written wrapper for GUI, which founded in /gui/ folder.
@@ -10,7 +11,7 @@ wxreactor.install()
 from twisted.internet import reactor, ssl
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
-from gui.filemanager import CloudStorage
+from gui.CloudStorage import CloudStorage
 
 # TODO: Add event handlers for Twisted
 # TODO: Add login/registration/options/about window
@@ -22,7 +23,6 @@ class GUIClientProtocol(WebSocketClientProtocol):
     def onOpen(self):
         self.factory._proto = self
         self.gui = self.factory._app._frame
-        self.gui.Show()
 
     def onClose(self, wasClean, code, reason):
         self.factory._proto = None
@@ -38,10 +38,11 @@ class GUIClientFactory(WebSocketClientFactory):
       self._app = app
       self._proto = None
 
+
 if __name__ == '__main__':
-    app = wx.App(False)
+    app = wx.App(0)
     app._factory = None
-    app._frame = CloudStorage(None, -1, 'CloudStorage')
+    app._frame = CloudStorage(None, -1, 'Авторизация')
     reactor.registerWxApp(app)
     host_url = "wss://%s:%s" % ("localhost", 9000)
     app._factory = GUIClientFactory(host_url, app)
