@@ -40,7 +40,7 @@ class GUIClientFactory(WebSocketClientFactory):
 
 
 if __name__ == '__main__':
-    app = wx.App(False)
+    app = wx.App(0)
     app._factory = None
     app._frame = CloudStorage(None, -1, 'Авторизация')
     reactor.registerWxApp(app)
