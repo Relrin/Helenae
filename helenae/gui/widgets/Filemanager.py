@@ -46,7 +46,6 @@ class FileManager(wx.Frame):
         menuBar.Append(configmenu, "&Настройка")
         menuBar.Append(helpmenu, "&Помощь")
         self.SetMenuBar(menuBar)
-        self.Bind(wx.EVT_MENU, self.OnExit, id=ID_EXIT)
 
         # toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT)
@@ -80,8 +79,6 @@ class FileManager(wx.Frame):
         self.sizer2.Add(button6, 1, wx.EXPAND)
         self.sizer2.Add(button7, 1, wx.EXPAND)
         self.sizer2.Add(button8, 1, wx.EXPAND)
-
-        self.Bind(wx.EVT_BUTTON, self.OnExit, id=ID_EXIT)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.splitter,1,wx.EXPAND)
