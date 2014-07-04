@@ -137,13 +137,15 @@ class DFSServerProtocol(WebSocketServerProtocol):
                     raise ValueError("Full name can't be empty!")
 
                 log.msg("[REGS] Creating special main catalog for new user...")
-                catalog_name = str(data['user'] + "_main_" + strftime("%d%m%Y", gmtime()))
+                #catalog_name = str(data['user'] + "_main_" + strftime("%d%m%Y", gmtime()))
+                catalog_name = str(data['user'] + "_main")
                 new_dir = Catalog(catalog_name)
                 session.add(new_dir)
                 session.commit()
 
                 log.msg("[REGS] Creating file space for new user...")
-                fs_name = str(data['user'] + "fs_" + strftime("%d%m%Y", gmtime()))
+                #fs_name = str(data['user'] + "fs_" + strftime("%d%m%Y", gmtime()))
+                fs_name = str(data['user'] + "_fs")
                 new_fs = FileSpace(fs_name, new_dir)
                 session.add(new_fs)
                 session.commit()
