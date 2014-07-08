@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import wx
+from ValidatorMsgDlg import ValidatorMsgDialog
 
 
 class PasswordValidator(wx.PyValidator):
     def __init__(self):
         wx.PyValidator.__init__(self)
+        self.dlg = None
 
     def Clone(self):  # Required method for validator
         return PasswordValidator()
@@ -17,10 +19,12 @@ class PasswordValidator(wx.PyValidator):
 
     def Validate(self, win):
         textCtrl = self.GetWindow()
-        text = textCtrl.GetValue().encode('utf-8')
+        text = textCtrl.GetValue().encode('utf-8').strip().replace(' ', '')
+        textCtrl.SetValue(text)
 
         if len(text) < 6:
-            wx.MessageBox("Пароль состоит минимум из 6 символов!", "Ошибка")
+            self.dlg = ValidatorMsgDialog(None, "Пароль состоит минимум из 6 символов!")
+            self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()
             textCtrl.Refresh()
