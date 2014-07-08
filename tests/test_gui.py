@@ -3,6 +3,7 @@ import pytest
 
 from helpers.Faker import Faker
 from fixtures.wxPython import wxMainApp
+from fixtures.twisted import twisted_server
 
 from helenae.gui.CloudStorage import ID_BUTTON_CANCEL, ID_BUTTON_ACCEPT, ID_NEW_MEMBER_TXT
 from helenae.gui.widgets.RegisterCtrl import ID_BUTTON_EXIT, ID_BUTTON_REG
@@ -20,6 +21,10 @@ from helenae.gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
     ("  rel rin  ", "  123 45 6"),
 ])
 def test_login_successful(wxMainApp, login, password):
+    """
+        Trying to enter valid data in login form
+        (typing login/password with errors, but out app fix this to valid)
+    """
     Faker.enterFakeLogin(wxMainApp, login, password)
     Faker.clickButton(wxMainApp, ID_BUTTON_ACCEPT)
     Faker.clickButton(wxMainApp.FileManager, ID_EXIT)
@@ -33,6 +38,10 @@ def test_login_successful(wxMainApp, login, password):
     pytest.mark.xfail(("rel", "12 345")),
 ])
 def test_login_failed(wxMainApp, login, password):
+    """
+        Trying to enter invalid data in login form
+        (typing login/password with errors, but out app fix this to valid)
+    """
     Faker.enterFakeLogin(wxMainApp, login, password)
     wx.CallAfter(Faker.clickButtonDialogOK(wxMainApp))
     Faker.clickButton(wxMainApp, ID_BUTTON_ACCEPT)
@@ -60,8 +69,8 @@ def test_login_failed(wxMainApp, login, password):
 ])
 def test_registration_successful(wxMainApp, login, password, fullname, email):
     """
-        Trying to enter invalid login in registration form
-        (typing logins with errors, but out app fix this to valid)
+        Trying to enter valid data in registration form
+        (typing login/password/fullname with errors, but out app fix this to valid)
     """
     Faker.clickHyperlink(wxMainApp, ID_NEW_MEMBER_TXT)
     Faker.enterFakeRegisterData(wxMainApp.RegisterWindow, login, password, fullname, email)
@@ -90,8 +99,8 @@ def test_registration_successful(wxMainApp, login, password, fullname, email):
 ])
 def test_registration_failed(wxMainApp, login, password, fullname, email):
     """
-        Trying to enter invalid password in registration form
-        (typing password with errors, but out app fix this to valid)
+        Trying to enter invalid data in registration form
+        (typing login/password/fullname with errors, but out app fix this to valid)
     """
     Faker.clickHyperlink(wxMainApp, ID_NEW_MEMBER_TXT)
     Faker.enterFakeRegisterData(wxMainApp.RegisterWindow, login, password, fullname, email)
