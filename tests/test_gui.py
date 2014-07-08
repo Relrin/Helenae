@@ -3,6 +3,7 @@ import pytest
 
 from helpers.Faker import Faker
 from fixtures.wxPython import wxMainApp
+from fixtures.twisted import twisted_server
 
 from helenae.gui.CloudStorage import ID_BUTTON_CANCEL, ID_BUTTON_ACCEPT, ID_NEW_MEMBER_TXT
 from helenae.gui.widgets.RegisterCtrl import ID_BUTTON_EXIT, ID_BUTTON_REG
