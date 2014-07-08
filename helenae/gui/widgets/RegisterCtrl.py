@@ -6,6 +6,8 @@ from validators.LoginValidator import LoginValidator
 from validators.PasswordValidator import PasswordValidator
 from validators.NameValidator import NameValidator
 
+from CompleteRegCtrl import CompleteRegCtrl
+
 ID_BUTTON_REG = 800
 ID_BUTTON_EXIT = 801
 ID_TEXT_INPUT_LOG = 802
@@ -25,9 +27,10 @@ ID_PRELOADER_REGISTER = 817
 
 class RegisterWindow(wx.Frame):
 
-    def __init__(self, parent, id, title):
+    def __init__(self, parent, id, title, ico_folder):
         wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
 
+        self.msg_box = CompleteRegCtrl(self, -1, 'Сообщение', ico_folder)
         # info label
         self.new_user = wx.StaticText(self, ID_TEXT_LABLE_LOG, label='Регистрация нового пользователя', pos=(35, 15))
         self.new_user.SetForegroundColour('#77899A')
@@ -72,13 +75,13 @@ class RegisterWindow(wx.Frame):
 
         # preloader
         self.preloader = wx.animate.AnimationCtrl(self, ID_PRELOADER_REGISTER, pos=(300, 228), size=(24, 24))
-        self.preloader.LoadFile('./gui/icons/preloader.gif', wx.animate.ANIMATION_TYPE_GIF)
+        self.preloader.LoadFile(ico_folder + '/icons/preloader.gif', wx.animate.ANIMATION_TYPE_GIF)
         self.preloader.Hide()
 
         # form settings
         size = (400, 270)
         self.SetSize(size)
-        self.icon = wx.Icon('./gui/icons/app.ico', wx.BITMAP_TYPE_ICO)
+        self.icon = wx.Icon(ico_folder+'/icons/app.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(self.icon)
 
     def PreloaderPlay(self):
@@ -112,6 +115,7 @@ class RegisterWindow(wx.Frame):
 
 if __name__ =='__main__':
     app = wx.App(0)
-    frame = RegisterWindow(None, -1, 'Создание аккаунта')
+    ico_folder = '..'
+    frame = RegisterWindow(None, -1, 'Создание аккаунта', ico_folder)
     frame.Show()
     app.MainLoop()

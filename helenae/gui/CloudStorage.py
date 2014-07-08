@@ -16,18 +16,18 @@ ID_TEXT_INPUT_PSW = 704
 ID_TEXT_LABEL_PSW = 705
 ID_NEW_MEMBER_TXT = 706
 ID_ERROR_USER = 707
-ID_ERROR_PSW = 707
+ID_ERROR_PSW = 708
 ID_PRELOADER = 709
 
 
 class CloudStorage(wx.Frame):
 
-    def __init__(self, parent, id, title):
+    def __init__(self, parent, id, title, ico_folder):
         wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
 
         # widgets
-        self.RegisterWindow = RegisterWindow(self, -1, 'Создание аккаунта')
-        self.FileManager = FileManager(self, -1, 'CloudStorage')
+        self.RegisterWindow = RegisterWindow(self, -1, 'Создание аккаунта', ico_folder)
+        self.FileManager = FileManager(self, -1, 'CloudStorage', ico_folder)
 
         # inputs
         self.login_label = wx.StaticText(self, ID_TEXT_LABLE_LOG, label='Логин', pos=(15, 15))
@@ -62,7 +62,7 @@ class CloudStorage(wx.Frame):
 
         # preloader
         self.preloader = wx.animate.AnimationCtrl(self, ID_PRELOADER, pos=(260, 97), size=(24, 24))
-        self.preloader.LoadFile('./gui/icons/preloader.gif', wx.animate.ANIMATION_TYPE_GIF)
+        self.preloader.LoadFile(ico_folder + '/icons/preloader.gif', wx.animate.ANIMATION_TYPE_GIF)
         self.preloader.Hide()
 
         # events
@@ -77,7 +77,7 @@ class CloudStorage(wx.Frame):
         # form settings
         size = (310, 150)
         self.SetSize(size)
-        self.icon = wx.Icon('./gui/icons/app.ico', wx.BITMAP_TYPE_ICO)
+        self.icon = wx.Icon(ico_folder + '/icons/app.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(self.icon)
         self.Show()
 
@@ -120,6 +120,7 @@ class CloudStorage(wx.Frame):
 
 if __name__ =='__main__':
     app = wx.App(0)
-    frame = CloudStorage(None, -1, 'Авторизация')
+    ico_folder = '.'
+    frame = CloudStorage(None, -1, 'Авторизация', ico_folder)
     frame.Show()
     app.MainLoop()

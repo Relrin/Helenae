@@ -9,11 +9,12 @@ import time
 
 
 class FileListCtrl(wx.ListCtrl):
-    def __init__(self, parent, id):
+
+    def __init__(self, parent, id, ico_folder):
         wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT)
 
-        self.__path = './gui/icons/mimetypes/'
-        images = ['./gui/icons/empty.png', './gui/icons/mimetypes/folder.png', './gui/icons/ui/up16.png']
+        self.__path = ico_folder + '/icons/mimetypes/'
+        images = [ico_folder + '/icons/empty.png', ico_folder + '/icons/mimetypes/folder.png', ico_folder + '/icons/ui/up16.png']
         types_icons = [self.__path + f for f in os.listdir(self.__path)]
         types_icons.sort()
         images += types_icons
@@ -25,9 +26,9 @@ class FileListCtrl(wx.ListCtrl):
         self.InsertColumn(2, 'Размер', wx.LIST_FORMAT_RIGHT)
         self.InsertColumn(3, 'Посл. изменение')
         # size for every column by ID
-        self.SetColumnWidth(0, 160)
-        self.SetColumnWidth(1, 50)
-        self.SetColumnWidth(2, 70)
+        self.SetColumnWidth(0, 450)
+        self.SetColumnWidth(1, 80)
+        self.SetColumnWidth(2, 150)
         self.SetColumnWidth(3, 120)
         # add images for supported files
         self.il = wx.ImageList(16, 16)
@@ -35,9 +36,10 @@ class FileListCtrl(wx.ListCtrl):
             self.il.Add(wx.Bitmap(i))
         self.SetImageList(self.il, wx.IMAGE_LIST_SMALL)
 
-        j = 1
-        self.InsertStringItem(0, '..')
-        self.SetItemImage(0, 2)
+        j = 0
+        # up from this folder to '..'
+        #self.InsertStringItem(0, '..')
+        #self.SetItemImage(0, 2)
 
         # all founded folders append first
         directories = [f for f in os.listdir('.') if os.path.isdir(f)]
@@ -49,6 +51,7 @@ class FileListCtrl(wx.ListCtrl):
             ex = ext[1:]
             size = os.path.getsize(i)
             sec = os.path.getmtime(i)
+            create_time = os.path.getctime(i)
             self.InsertStringItem(j, name)
             self.SetStringItem(j, 1, ex)
             self.SetStringItem(j, 2, str(size) + ' B')
@@ -81,3 +84,9 @@ class FileListCtrl(wx.ListCtrl):
             if (j % 2) == 0:
                 self.SetItemBackgroundColour(j, '#e6f1f5')
             j += 1
+
+    def ResizeColumns(self, sizeX):
+        self.SetColumnWidth(0, sizeX * 0.5625)
+        self.SetColumnWidth(1, sizeX * 0.1)
+        self.SetColumnWidth(2, sizeX * 0.1875)
+        self.SetColumnWidth(3, sizeX * 0.15)

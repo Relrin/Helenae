@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import wx
+from ValidatorMsgDlg import ValidatorMsgDialog
 
 
 class NameValidator(wx.PyValidator):
     def __init__(self):
         wx.PyValidator.__init__(self)
+        self.dlg = ValidatorMsgDialog
 
     def Clone(self):  # Required method for validator
         return NameValidator()
@@ -17,10 +19,13 @@ class NameValidator(wx.PyValidator):
 
     def Validate(self, win):
         textCtrl = self.GetWindow()
-        text = textCtrl.GetValue().encode('utf-8')
+        text = textCtrl.GetValue().encode('utf-8').strip()
+        with_spaces = filter(lambda x: x!= '', text.split(' '))
+        textCtrl.SetValue(' '.join(with_spaces))
 
         if len(text) < 5:
-            wx.MessageBox("Ф.И.О. состоит минимум из 5 символов!", "Ошибка")
+            self.dlg = ValidatorMsgDialog(None, "Ф.И.О. состоит минимум из 5 символов!")
+            self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()
             textCtrl.Refresh()

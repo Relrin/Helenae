@@ -7,20 +7,21 @@ ID_LINK_SITE = 901
 ID_ABOUT_ICONS = 903
 ID_ABOUT_RIGHTS = 904
 ID_ABOUT_TXT = 905
+ID_ABOUT_MAIN = 906
 
 
 class About(wx.Frame):
 
-    def __init__(self, parent, id, title):
+    def __init__(self, parent, id, title, ico_folder):
         wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
 
         # lables, which contains some text
         txt = """Распределенное файловое хранилище"""
-        self.about_txt = wx.StaticText(self, label=txt, pos=(25,15))
+        self.about_txt = wx.StaticText(self, id=ID_ABOUT_MAIN, label=txt, pos=(25,15))
         self.about_txt.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0))
 
         about = """Дипломный проект по специальности \n             инженер-программист"""
-        self.icons_txt = wx.StaticText(self, id=ID_ABOUT_ICONS, label=about, pos=(15, 55))
+        self.icons_txt = wx.StaticText(self, id=ID_ABOUT_TXT, label=about, pos=(15, 55))
         self.icons_txt.SetFont(wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
 
         icons = """Иконки предоставлены http://www.fatcow.com/ \nпо лицензии Creative Commons Attribution 3.0"""
@@ -44,7 +45,7 @@ class About(wx.Frame):
         # form settings
         size = (300, 200)
         self.SetSize(size)
-        self.icon = wx.Icon('./gui/icons/app.ico', wx.BITMAP_TYPE_ICO)
+        self.icon = wx.Icon(ico_folder + '/icons/app.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(self.icon)
 
     def OnExit(self, event):
@@ -52,6 +53,7 @@ class About(wx.Frame):
 
 if __name__ =='__main__':
     app = wx.App(0)
-    frame = About(None, -1, 'О программе')
+    ico_folder = '..'
+    frame = About(None, -1, 'О программе', ico_folder)
     frame.Show()
     app.MainLoop()

@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import wx
+from ValidatorMsgDlg import ValidatorMsgDialog
 
 
 class LoginValidator(wx.PyValidator):
     def __init__(self):
         wx.PyValidator.__init__(self)
+        self.dlg = None
 
     def Clone(self):  # Required method for validator
         return LoginValidator()
@@ -17,10 +19,12 @@ class LoginValidator(wx.PyValidator):
 
     def Validate(self, win):
         textCtrl = self.GetWindow()
-        text = textCtrl.GetValue().encode('utf-8')
+        text = textCtrl.GetValue().encode('utf-8').strip().replace(' ', '')
+        textCtrl.SetValue(text)
 
         if len(text) < 3:
-            wx.MessageBox("Логин состоит минимум из 3 символов!", "Ошибка")
+            self.dlg = ValidatorMsgDialog(None, "Логин состоит минимум из 3 символов!")
+            self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()
             textCtrl.Refresh()
