@@ -16,6 +16,7 @@ from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientPr
 from utils import commands
 from gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
 from gui.widgets.RegisterCtrl import ID_BUTTON_REG
+from gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
 
 # TODO: Add event handlers for Twisted
 # TODO: Add login/registration/options/about window
@@ -40,6 +41,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
     def initBindings(self):
         self.gui.Bind(wx.EVT_BUTTON, self.__StartAuth, id=ID_BUTTON_ACCEPT)
         self.gui.RegisterWindow.Bind(wx.EVT_BUTTON, self.__StartRegistration, id=ID_BUTTON_REG)
+        self.gui.Bind(wx.EVT_BUTTON, self.onEndRegister, id=ID_BUTTON_CLOSE_MSG)
 
     def __StartAuth(self, event):
         """
@@ -68,6 +70,11 @@ class GUIClientProtocol(WebSocketClientProtocol):
                           'email': email, 'fullname': fullname})
             self.sendMessage(data, sync=True)
 
+    def onEndRegister(self, event):
+        self.gui.RegisterWindow.Hide()
+        self.gui.Close()
+        self.gui.RegisterWindow.Close()
+
     def __AUTH(self, data):
         """
             Close login window and open filemanager window, only if successfull auth
@@ -91,10 +98,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
             Handler for complete registration process
         """
         self.gui.RegisterWindow.PreloaderStop()
-        wx.MessageBox("После перезапуска приложения вы можете авторизироваться", "Сообщение")
-        self.gui.RegisterWindow.Hide()
-        self.gui.Close()
-        self.gui.RegisterWindow.Close()
+        self.gui.RegisterWindow.msg_box.Show()
 
     def __RREG(self, data):
         """
@@ -140,7 +144,7 @@ class GUIClientFactory(WebSocketClientFactory):
 if __name__ == '__main__':
     app = wx.App(0)
     app._factory = None
-    app._frame = CloudStorage(None, -1, 'Авторизация')
+    app._frame = CloudStorage(None, -1, 'Авторизация', './gui/')
     reactor.registerWxApp(app)
     host_url = "wss://%s:%s" % ("localhost", 9000)
     app._factory = GUIClientFactory(host_url, app)
