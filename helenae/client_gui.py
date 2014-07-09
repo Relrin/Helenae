@@ -81,6 +81,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
         if data['auth']:
             self.gui.Hide()
+            self.gui.FileManager.options_frame.setUserOptionsPath(data['user'])
             self.gui.FileManager.Show()
 
     def __RAUT(self, data):
