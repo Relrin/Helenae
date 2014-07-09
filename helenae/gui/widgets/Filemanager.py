@@ -3,7 +3,7 @@ import os
 import wx
 
 from FileListCtrl import FileListCtrl
-
+from OptionsCtrl import OptionsCtrl
 
 ID_BUTTON = 100
 ID_NEW = 150
@@ -13,6 +13,7 @@ ID_REPLACE = 153
 ID_REMOVE = 154
 ID_SYNC = 155
 ID_SHOW_STATUSBAR = 156
+ID_OPTIONS = 157
 ID_EXIT = 200
 ID_SPLITTER = 300
 
@@ -32,6 +33,8 @@ class FileManager(wx.Frame):
 
         # file frame
         self.files_folder = FileListCtrl(self, -1, ico_folder)
+        # options frame
+        self.options_frame = OptionsCtrl(self, -1, "Опции", ico_folder)
 
         # menu
         filemenu= wx.Menu()
@@ -61,9 +64,9 @@ class FileManager(wx.Frame):
         configmenu = wx.Menu()
         self.show_statusbar = configmenu.Append(ID_SHOW_STATUSBAR, 'Отображать статусбар', 'Отображать статусбар', kind=wx.ITEM_CHECK)
         configmenu.Check(self.show_statusbar.GetId(), True)
-        preferencesItem = wx.MenuItem(filemenu, ID_EXIT, "&Параметры", help='Основные параметры приложения')
-        preferencesItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/preferences/preferences.png'))
-        configmenu.AppendItem(preferencesItem)
+        self.preferencesItem = wx.MenuItem(filemenu, ID_OPTIONS, "&Параметры", help='Основные параметры приложения')
+        self.preferencesItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/preferences/preferences.png'))
+        configmenu.AppendItem(self.preferencesItem)
 
         about = wx.Menu()
         helpmenu = wx.Menu()
@@ -114,6 +117,7 @@ class FileManager(wx.Frame):
         # events bindings
         self.Bind(wx.EVT_SIZE, self.OnSize)
         self.Bind(wx.EVT_MENU, self.ToggleStatusBar, self.show_statusbar)
+        self.Bind(wx.EVT_MENU, self.ShowMenu, self.preferencesItem)
 
         # define size and icon for app
         size = (800, 600)
@@ -126,6 +130,9 @@ class FileManager(wx.Frame):
         self.sb = self.CreateStatusBar()
         self.sb.SetStatusText(os.getcwd())
         self.Center()
+
+    def ShowMenu(self, event):
+        self.options_frame.Show()
 
     def ToggleStatusBar(self, event):
         if self.show_statusbar.IsChecked():
