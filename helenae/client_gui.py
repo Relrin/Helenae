@@ -82,6 +82,14 @@ class GUIClientProtocol(WebSocketClientProtocol):
         if data['auth']:
             self.gui.Hide()
             self.gui.FileManager.options_frame.setUserOptionsPath(data['user'])
+            if not self.gui.FileManager.options_frame.userOptionsFileExists(data['user']):
+                self.gui.FileManager.options_frame.setUserFolderOnFirstLoad()
+                self.gui.FileManager.options_frame.createOptionsFile()
+            self.gui.FileManager.options_frame.readUserSettings()
+            pathToUserFolder = self.gui.FileManager.options_frame.notebook.tabBasicPreferences.InputUserFolder.GetValue()
+            self.gui.FileManager.files_folder.showFilesInDirectory(pathToUserFolder)
+            self.gui.FileManager.files_folder.setCurrentDir(pathToUserFolder)
+            self.gui.FileManager.sb.SetStatusText(pathToUserFolder)
             self.gui.FileManager.Show()
 
     def __RAUT(self, data):
