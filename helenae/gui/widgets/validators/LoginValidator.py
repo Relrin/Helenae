@@ -20,6 +20,7 @@ class LoginValidator(wx.PyValidator):
     def Validate(self, win):
         textCtrl = self.GetWindow()
         text = textCtrl.GetValue().encode('utf-8').strip().replace(' ', '')
+        text = text.translate(None, "~|*:'><?!@#^&%=+`$[]{}," + '"')
         textCtrl.SetValue(text)
 
         if len(text) < 3:
