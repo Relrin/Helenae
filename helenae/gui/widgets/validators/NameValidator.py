@@ -20,6 +20,7 @@ class NameValidator(wx.PyValidator):
     def Validate(self, win):
         textCtrl = self.GetWindow()
         text = textCtrl.GetValue().encode('utf-8').strip()
+        text = text.translate(None, "~|*:'><?!@#^&%=+`$[]{}," + '"')
         with_spaces = filter(lambda x: x!= '', text.split(' '))
         textCtrl.SetValue(' '.join(with_spaces))
 

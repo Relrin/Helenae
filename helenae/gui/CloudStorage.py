@@ -71,7 +71,7 @@ class CloudStorage(wx.Frame):
         # events for Register window
         self.Bind(wx.EVT_BUTTON, self.OnExitRegister, id=ID_BUTTON_EXIT)
         # events for Filemanager window
-        self.Bind(wx.EVT_MENU, self.OnExitFilemanager, id=ID_EXIT)  # exit through menu
+        self.Bind(wx.EVT_MENU, self.OnExit, id=ID_EXIT)  # exit through menu
         self.Bind(wx.EVT_BUTTON, self.OnExit, id=ID_EXIT)  # exit from button in ButtonBox
 
         # form settings
@@ -111,11 +111,6 @@ class CloudStorage(wx.Frame):
     def OnExitRegister(self, event):
         self.Close()
         self.RegisterWindow.Close()
-
-    def OnExitFilemanager(self, event):
-        self.Close()
-        self.RegisterWindow.Close()
-        self.FileManager.Close()
 
 
 if __name__ =='__main__':

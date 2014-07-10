@@ -29,6 +29,7 @@ class RegisterWindow(wx.Frame):
 
     def __init__(self, parent, id, title, ico_folder):
         wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
+        self.parent = parent
 
         self.msg_box = CompleteRegCtrl(self, -1, 'Сообщение', ico_folder)
         # info label
@@ -84,6 +85,8 @@ class RegisterWindow(wx.Frame):
         self.icon = wx.Icon(ico_folder+'/icons/app.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(self.icon)
 
+        self.Bind(wx.EVT_CLOSE, self.OnHide)
+
     def PreloaderPlay(self):
         self.preloader.Show()
         self.preloader.Play()
@@ -109,6 +112,10 @@ class RegisterWindow(wx.Frame):
         self.error_psw.SetLabel('')
         self.error_name.SetLabel('')
         self.error_email.SetLabel('')
+
+    def OnHide(self, event):
+        self.Hide()
+        self.parent.Close()
 
     def OnExit(self, event):
         self.Close()
