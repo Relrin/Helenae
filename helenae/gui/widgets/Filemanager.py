@@ -1,11 +1,22 @@
 # -*- coding: utf-8 -*-
 import os
 import wx
+import sys
+import ntpath
 
 from FileListCtrl import FileListCtrl
 from OptionsCtrl import OptionsCtrl
+from InputDialogCtrl import InputDialog
+from validators.FolderValidator import FolderValidator
+from validators.FileValidator import FileValidator
 
 ID_BUTTON = 100
+ID_BUTTON_WRITE = 101
+ID_BUTTON_SYNC = 102
+ID_BUTTON_TRANSFER = 103
+ID_BUTTON_CREATE_FOLDER = 104
+ID_BUTTON_REMOVE_FILE = 105
+ID_BUTTON_RENAME = 106
 ID_NEW = 150
 ID_FOLDER = 151
 ID_RENAME = 152
@@ -14,6 +25,7 @@ ID_REMOVE = 154
 ID_SYNC = 155
 ID_SHOW_STATUSBAR = 156
 ID_OPTIONS = 157
+ID_WRITE = 158
 ID_EXIT = 200
 ID_SPLITTER = 300
 
@@ -30,6 +42,8 @@ ID_SPLITTER = 300
 class FileManager(wx.Frame):
     def __init__(self, parent, id, title, ico_folder):
         wx.Frame.__init__(self, parent, -1, title)
+        self.parent = parent
+        self.ico_folder = ico_folder
 
         # file frame
         self.files_folder = FileListCtrl(self, -1, ico_folder)
@@ -46,14 +60,18 @@ class FileManager(wx.Frame):
         renameItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/rename.png'))
         removeItem = wx.MenuItem(filemenu, ID_REPLACE, "&Перенос", help='Перенести выделенные файлы в другой каталог')
         removeItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/remove.png'))
+        writeItem = wx.MenuItem(filemenu, ID_WRITE, "&Запись", help='Записать выделенные файлы')
+        writeItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/write.png'))
         deleteItem = wx.MenuItem(filemenu, ID_REMOVE, "&Удалить", help='Удалить выделенные файлы')
         deleteItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/delete.png'))
         syncItem = wx.MenuItem(filemenu, ID_SYNC, "&Синхронизация", help='Синхронизировать выделенные файлы')
         syncItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/sync.png'))
         filemenu.AppendItem(newItem)
         filemenu.AppendItem(createItem)
+        filemenu.AppendSeparator()
         filemenu.AppendItem(renameItem)
         filemenu.AppendItem(removeItem)
+        filemenu.AppendItem(writeItem)
         filemenu.AppendItem(deleteItem)
         filemenu.AppendItem(syncItem)
         filemenu.AppendSeparator()
@@ -93,13 +111,33 @@ class FileManager(wx.Frame):
         # button panel
         self.sizer2 = wx.BoxSizer(wx.HORIZONTAL)
 
-        button1 = wx.Button(self, ID_BUTTON + 1, "F4 Запись")
-        button2 = wx.Button(self, ID_BUTTON + 3, "F5 Синхр.")
-        button3 = wx.Button(self, ID_BUTTON + 4, "F6 Перенести")
-        button4 = wx.Button(self, ID_BUTTON + 5, "F7 Созд. каталог")
-        button5 = wx.Button(self, ID_BUTTON + 6, "F8 Удалить")
-        button6 = wx.Button(self, ID_BUTTON + 7, "F9 Перемеин.")
+        button1 = wx.Button(self, ID_BUTTON_WRITE, "F4 Запись")
+        button1.SetBackgroundColour('#BFD8DF')
+        button1.SetForegroundColour("#2F4D57")
+
+        button2 = wx.Button(self, ID_BUTTON_SYNC, "F5 Синхр.")
+        button2.SetBackgroundColour('#BFD8DF')
+        button2.SetForegroundColour("#2F4D57")
+
+        button3 = wx.Button(self, ID_BUTTON_TRANSFER, "F6 Перенос")
+        button3.SetBackgroundColour('#BFD8DF')
+        button3.SetForegroundColour("#2F4D57")
+
+        button4 = wx.Button(self, ID_BUTTON_CREATE_FOLDER, "F7 Созд. каталог")
+        button4.SetBackgroundColour('#BFD8DF')
+        button4.SetForegroundColour("#2F4D57")
+
+        button5 = wx.Button(self, ID_BUTTON_REMOVE_FILE, "F8 Удалить")
+        button5.SetBackgroundColour('#BFD8DF')
+        button5.SetForegroundColour("#2F4D57")
+
+        button6 = wx.Button(self, ID_BUTTON_RENAME, "F9 Перемеин.")
+        button6.SetBackgroundColour('#BFD8DF')
+        button6.SetForegroundColour("#2F4D57")
+
         button7 = wx.Button(self, ID_EXIT, "F10 Выход")
+        button7.SetBackgroundColour('#BFD8DF')
+        button7.SetForegroundColour("#2F4D57")
 
         self.sizer2.Add(button1, 1, wx.EXPAND)
         self.sizer2.Add(button2, 1, wx.EXPAND)
@@ -118,6 +156,12 @@ class FileManager(wx.Frame):
         self.Bind(wx.EVT_SIZE, self.OnSize)
         self.Bind(wx.EVT_MENU, self.ToggleStatusBar, self.show_statusbar)
         self.Bind(wx.EVT_MENU, self.ShowMenu, self.preferencesItem)
+        self.Bind(wx.EVT_CLOSE, self.OnExitProgramm)
+        # create folder
+        self.Bind(wx.EVT_BUTTON, self.OnCreateFolder, id=ID_BUTTON_CREATE_FOLDER)
+        self.Bind(wx.EVT_MENU, self.OnCreateFolder, id=ID_FOLDER)
+        # create file
+        self.Bind(wx.EVT_MENU, self.OnCreateFile, id=ID_NEW)
 
         # define size and icon for app
         size = (800, 600)
@@ -128,8 +172,36 @@ class FileManager(wx.Frame):
 
         # add status bar
         self.sb = self.CreateStatusBar()
-        self.sb.SetStatusText(os.getcwd())
         self.Center()
+
+    def OnCreateFolder(self, event):
+        dlg = InputDialog(self, -1, 'Введите каталог', self.ico_folder, FolderValidator())
+        dlg.ShowModal()
+        if dlg.result is not None:
+            try:
+                new_folder = self.files_folder.currentDir + dlg.result
+                os.makedirs(new_folder)
+            except OSError:
+                wx.MessageBox("Вероятнее всего, такой файл или каталог уже существует!\nПожалуйста, дайте файлу другое имя.", 'Ошибка')
+            except Exception, exc:
+                wx.MessageBox("%s" % exc.message, "Ошибка")
+            self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
+
+    def OnCreateFile(self, event):
+        dlg = InputDialog(self, -1, 'Введите имя файла и расширение', self.ico_folder, FileValidator())
+        dlg.ShowModal()
+        if dlg.result is not None:
+            try:
+                new_file = self.files_folder.currentDir + dlg.result
+                new_folders, filename = ntpath.split(dlg.result)
+                if len(new_folders) > 2:
+                    os.makedirs(self.files_folder.currentDir + new_folders)
+                open(new_file, 'a').close()
+            except OSError:
+                wx.MessageBox("Вероятнее всего, такой файл или каталог уже существует!\nПожалуйста, дайте файлу другое имя.", 'Ошибка')
+            except Exception, exc:
+                wx.MessageBox("%s" % exc.message, "Ошибка")
+            self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
 
     def ShowMenu(self, event):
         self.options_frame.Show()
@@ -142,6 +214,9 @@ class FileManager(wx.Frame):
 
     def OnExit(self, event):
         self.Close()
+
+    def OnExitProgramm(self, event):
+        self.parent.Close()
 
     def OnSize(self, event):
         size = self.GetSize()
