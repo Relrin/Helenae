@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import wx
-import sys
+import shutil
 import ntpath
 
 from FileListCtrl import FileListCtrl
@@ -9,6 +9,7 @@ from OptionsCtrl import OptionsCtrl
 from InputDialogCtrl import InputDialog
 from validators.FolderValidator import FolderValidator
 from validators.FileValidator import FileValidator
+from validators.ValidatorMsgDlg import ValidatorMsgDialog as MsgDlg
 
 ID_BUTTON = 100
 ID_BUTTON_WRITE = 101
@@ -26,15 +27,16 @@ ID_SYNC = 155
 ID_SHOW_STATUSBAR = 156
 ID_OPTIONS = 157
 ID_WRITE = 158
+ID_COPY_FILE = 159
+ID_COPY_FOLDER = 160
 ID_EXIT = 200
 ID_SPLITTER = 300
+ID_TOOLBAR_UPDIR = 201
+ID_TOOLBAR_HOME = 202
+ID_TOOLBAR_REFRESH = 203
+ID_TOOLBAR_HELP = 204
 
-# TODO: add into 'about' link to http://www.fatcow.com/ for icon theme
-# TODO: add 'login/register' widget
-# TODO: add 'options' widget
 # TODO: add handlers for buttons/menus/etc.
-# TODO: add icons for elements (buttons/menus/etc.)
-# TODO: add logger
 # TODO: save JSON configs in temp folder
 # TODO: save part info (about catalog structure) in XML
 
@@ -56,6 +58,10 @@ class FileManager(wx.Frame):
         newItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/new.png'))
         createItem = wx.MenuItem(filemenu, ID_FOLDER, "&Создать каталог", help='Создать новый каталог')
         createItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/folder.png'))
+        copyFileItem = wx.MenuItem(filemenu, ID_COPY_FILE, "&Скопировать файл", help='Скопировать файл извне в текущий каталог')
+        copyFileItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/copy_file.png'))
+        copyFolderItem = wx.MenuItem(filemenu, ID_COPY_FOLDER, "&Скопировать каталог", help='Скопировать каталог извне в текущий каталог')
+        copyFolderItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/copy_folder.png'))
         renameItem = wx.MenuItem(filemenu, ID_RENAME, "&Перемеиновать", help='Перемеиновать выделенный файл')
         renameItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/rename.png'))
         removeItem = wx.MenuItem(filemenu, ID_REPLACE, "&Перенос", help='Перенести выделенные файлы в другой каталог')
@@ -69,6 +75,9 @@ class FileManager(wx.Frame):
         filemenu.AppendItem(newItem)
         filemenu.AppendItem(createItem)
         filemenu.AppendSeparator()
+        filemenu.AppendItem(copyFileItem)
+        filemenu.AppendItem(copyFolderItem)
+        filemenu.AppendSeparator()
         filemenu.AppendItem(renameItem)
         filemenu.AppendItem(removeItem)
         filemenu.AppendItem(writeItem)
@@ -80,7 +89,7 @@ class FileManager(wx.Frame):
         filemenu.AppendItem(exitItem)
 
         configmenu = wx.Menu()
-        self.show_statusbar = configmenu.Append(ID_SHOW_STATUSBAR, 'Отображать статусбар', 'Отображать статусбар', kind=wx.ITEM_CHECK)
+        self.show_statusbar = configmenu.Append(ID_SHOW_STATUSBAR, 'Отображать строку статуса', 'Отображать строку статуса', kind=wx.ITEM_CHECK)
         configmenu.Check(self.show_statusbar.GetId(), True)
         self.preferencesItem = wx.MenuItem(filemenu, ID_OPTIONS, "&Параметры", help='Основные параметры приложения')
         self.preferencesItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/preferences/preferences.png'))
@@ -98,14 +107,11 @@ class FileManager(wx.Frame):
 
         # toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT)
-        tb.AddSimpleTool(10, wx.Bitmap(ico_folder + '/icons/ui/toolbar/previous.png'), 'Previous')
-        tb.AddSimpleTool(20, wx.Bitmap(ico_folder + '/icons/ui/toolbar/up.png'), 'Up one directory')
-        tb.AddSimpleTool(30, wx.Bitmap(ico_folder + '/icons/ui/toolbar/home.png'), 'Home')
-        tb.AddSimpleTool(40, wx.Bitmap(ico_folder + '/icons/ui/toolbar/refresh.png'), 'Refresh')
+        tb.AddSimpleTool(ID_TOOLBAR_UPDIR, wx.Bitmap(ico_folder + '/icons/ui/toolbar/up.png'), 'Up one directory')
+        tb.AddSimpleTool(ID_TOOLBAR_HOME, wx.Bitmap(ico_folder + '/icons/ui/toolbar/home.png'), 'Home')
+        tb.AddSimpleTool(ID_TOOLBAR_REFRESH, wx.Bitmap(ico_folder + '/icons/ui/toolbar/refresh.png'), 'Refresh')
         tb.AddSeparator()
-        tb.AddSimpleTool(60, wx.Bitmap(ico_folder + '/icons/ui/toolbar/terminal.png'), 'Terminal')
-        tb.AddSeparator()
-        tb.AddSimpleTool(70, wx.Bitmap(ico_folder + '/icons/ui/toolbar/help.png'), 'Help')
+        tb.AddSimpleTool(ID_TOOLBAR_HELP, wx.Bitmap(ico_folder + '/icons/ui/toolbar/help.png'), 'Help')
         tb.Realize()
 
         # button panel
@@ -162,6 +168,14 @@ class FileManager(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnCreateFolder, id=ID_FOLDER)
         # create file
         self.Bind(wx.EVT_MENU, self.OnCreateFile, id=ID_NEW)
+        # toolbar events
+        self.Bind(wx.EVT_TOOL, self.UpDir, id=ID_TOOLBAR_UPDIR)
+        self.Bind(wx.EVT_TOOL, self.Home, id=ID_TOOLBAR_HOME)
+        self.Bind(wx.EVT_TOOL, self.RefreshFileCtrl, id=ID_TOOLBAR_REFRESH)
+        # copy file
+        self.Bind(wx.EVT_MENU, self.CopyFile, id=ID_COPY_FILE)
+        # copy folder
+        self.Bind(wx.EVT_MENU, self.CopyFolder, id=ID_COPY_FOLDER)
 
         # define size and icon for app
         size = (800, 600)
@@ -173,6 +187,19 @@ class FileManager(wx.Frame):
         # add status bar
         self.sb = self.CreateStatusBar()
         self.Center()
+
+    def UpDir(self, event):
+        if self.files_folder.currentDir != self.files_folder.defaultDir:
+            self.files_folder.currentDir = self.files_folder.getParentDir(self.files_folder.currentDir)
+        filepath = self.files_folder.currentDir
+        self.files_folder.showFilesInDirectory(filepath)
+
+    def Home(self, event):
+        self.files_folder.currentDir = self.files_folder.defaultDir
+        self.files_folder.showFilesInDirectory(self.files_folder.defaultDir)
+
+    def RefreshFileCtrl(self, event):
+        self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
 
     def OnCreateFolder(self, event):
         dlg = InputDialog(self, -1, 'Введите каталог', self.ico_folder, FolderValidator())
@@ -186,6 +213,7 @@ class FileManager(wx.Frame):
             except Exception, exc:
                 wx.MessageBox("%s" % exc.message, "Ошибка")
             self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
+        dlg.Destroy()
 
     def OnCreateFile(self, event):
         dlg = InputDialog(self, -1, 'Введите имя файла и расширение', self.ico_folder, FileValidator())
@@ -202,6 +230,49 @@ class FileManager(wx.Frame):
             except Exception, exc:
                 wx.MessageBox("%s" % exc.message, "Ошибка")
             self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
+        dlg.Destroy()
+
+    def CopyFile(self, event):
+        dlg = wx.FileDialog(self, "Укажите путь к файлу", "", "", "All files (*.*)|*.*", wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        if dlg.ShowModal() == wx.ID_OK:
+            filepath = dlg.GetPath()
+            dir, filename = ntpath.split(filepath)
+            shutil.copyfile(filepath, self.files_folder.currentDir+filename)
+            self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
+            msg_dlg = MsgDlg(None, "Копирование завершено!")
+            msg_dlg.ShowModal()
+        dlg.Destroy()
+
+    def CopyMoveOperation(self, src, target, operation='copy'):
+        for src_dir, dirs, files in os.walk(src):
+            dst_dir = src_dir.replace(src, target)
+            if not os.path.exists(dst_dir):
+                os.mkdir(dst_dir)
+            for file_ in files:
+                src_file = os.path.join(src_dir, file_)
+                dst_file = os.path.join(dst_dir, file_)
+                if os.path.exists(dst_file):
+                    os.remove(dst_file)
+                if operation is 'copy':
+                    shutil.copy(src_file, dst_dir)
+                elif operation is 'move':
+                    shutil.move(src_file, dst_dir)
+
+    def CopyFolder(self, event):
+        dlg = wx.DirDialog(self, "Укажите директорию", style=wx.DD_DEFAULT_STYLE)
+        if dlg.ShowModal() == wx.ID_OK:
+            folderpath = dlg.GetPath()
+            try:
+                new_folder = folderpath.split('/')[-1]
+                os.mkdir(new_folder)
+            # if this folder already exists - then catch exception, ignore him, and copy files right now
+            except OSError:
+                pass
+            self.CopyMoveOperation(folderpath, self.files_folder.currentDir+new_folder)
+            self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
+            msg_dlg = MsgDlg(None, "Копирование завершено!")
+            msg_dlg.ShowModal()
+        dlg.Destroy()
 
     def ShowMenu(self, event):
         self.options_frame.Show()
