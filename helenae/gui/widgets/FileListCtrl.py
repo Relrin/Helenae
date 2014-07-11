@@ -2,10 +2,10 @@
 """
     Custom widget for wxPython: file list control
 """
-
 import wx
 import os
 import time
+import platform
 from helenae.utils.commands import convertSize
 
 
@@ -13,8 +13,10 @@ class FileListCtrl(wx.ListCtrl):
 
     def __init__(self, parent, id, ico_folder):
         wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT)
+        self.parent = parent
 
         self.currentDir = None
+        self.defaultDir = None
         self.__path = ico_folder + '/icons/mimetypes/'
         images = [ico_folder + '/icons/empty.png', ico_folder + '/icons/mimetypes/folder.png', ico_folder + '/icons/ui/up16.png']
         types_icons = [self.__path + f for f in os.listdir(self.__path)]
@@ -46,14 +48,24 @@ class FileListCtrl(wx.ListCtrl):
         if not self.currentDir.endswith('/'):
             self.currentDir += '/'
 
+    def setUsersDir(self, dir):
+        self.defaultDir = dir
+        if not self.defaultDir.endswith('/'):
+            self.defaultDir += '/'
 
     def insertUpDirectory(self):
         #up from this folder to '..'
         self.InsertStringItem(0, '..')
         self.SetItemImage(0, 2)
 
-    def showFilesInDirectory(self, directory='.', j=0):
+    def showFilesInDirectory(self, directory='.'):
+        self.parent.sb.SetStatusText(directory)
         self.DeleteAllItems()
+        j = 0
+
+        if directory != self.defaultDir:
+            self.insertUpDirectory()
+            j = 1
 
         # add at the and of our 'directory' string '/' if doesn't contain this symbol
         if not directory.endswith('/'):
@@ -64,7 +76,6 @@ class FileListCtrl(wx.ListCtrl):
         directories.sort()
 
         for i in directories:
-            size = os.path.getsize(directory+i)
             sec = os.path.getmtime(directory+i)
             self.InsertStringItem(j, i)
             self.SetStringItem(j, 1, '')
@@ -107,10 +118,26 @@ class FileListCtrl(wx.ListCtrl):
         self.SetColumnWidth(2, sizeX * 0.1875)
         self.SetColumnWidth(3, sizeX * 0.15)
 
+    def getParentDir(self, dir):
+        return os.sep.join(dir.split(os.sep)[:-2]) + '/'
+
     def onLeftClick(self, event):
         index = self.GetFirstSelected()
-        item = self.getFullnameItem(index)
-        # TODO: go to some folder inside...
+        filepath = self.currentDir + self.getFullnameItem(index)
+        if os.path.isdir(filepath):
+            if self.GetItem(index, 0).GetText() == '..':
+                self.currentDir = self.getParentDir(self.currentDir)
+                filepath = self.currentDir
+                self.showFilesInDirectory(filepath)
+            else:
+                self.currentDir = filepath + '/'
+                self.showFilesInDirectory(filepath)
+        else:
+            platform_os = platform.system()
+            if platform_os == 'Linux':
+                os.system('xdg-open "%s"' % (filepath))
+            elif platform_os == 'Windows':
+                os.system('start "%s"')
 
     def getFullnameItem(self, index):
         item = self.GetItem(index, 0).GetText()
