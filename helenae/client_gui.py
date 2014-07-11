@@ -87,8 +87,9 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 self.gui.FileManager.options_frame.createOptionsFile()
             self.gui.FileManager.options_frame.readUserSettings()
             pathToUserFolder = self.gui.FileManager.options_frame.notebook.tabBasicPreferences.InputUserFolder.GetValue()
-            self.gui.FileManager.files_folder.showFilesInDirectory(pathToUserFolder)
             self.gui.FileManager.files_folder.setCurrentDir(pathToUserFolder)
+            self.gui.FileManager.files_folder.setUsersDir(pathToUserFolder)
+            self.gui.FileManager.files_folder.showFilesInDirectory( self.gui.FileManager.files_folder.currentDir)
             self.gui.FileManager.sb.SetStatusText(pathToUserFolder)
             self.gui.FileManager.Show()
 
