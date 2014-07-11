@@ -6,7 +6,20 @@ import wx
 import os
 import time
 import platform
-from helenae.utils.commands import convertSize
+from math import log
+
+unit_list = zip(['байт', 'Кб', 'Мб', 'Гб', 'Тб', 'Пб'], [0, 0, 1, 2, 2, 2])
+def convertSize(num):
+    if num > 1:
+        exponent = min(int(log(num, 1024)), len(unit_list) - 1)
+        quotient = float(num) / 1024**exponent
+        unit, num_decimals = unit_list[exponent]
+        format_string = '{:.%sf} {}' % (num_decimals)
+        return format_string.format(quotient, unit)
+    elif num == 0:
+        return '0 байт'
+    elif num == 1:
+        return '1 байт'
 
 
 class FileListCtrl(wx.ListCtrl):
