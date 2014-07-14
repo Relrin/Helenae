@@ -110,7 +110,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
             file_path = unicode(raw_input('Path:'))
         file_hash, file_size = md5_for_file(file_path)
         data = commands.constructDataClient('WRTE', data['user'], data['password'], True,
-                                            file_path=file_path, file_size=file_size, file_hash=file_hash)
+                                            file_path=file_path, file_size=file_size, file_hash=file_hash,
+                                            gui=False)
         return data
 
     def __COWF(self, data):
