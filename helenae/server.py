@@ -95,6 +95,22 @@ class DFSServerProtocol(WebSocketServerProtocol):
         dlUpdateDB = deferLater(reactor, 0, self.__updateStatusDB)
         dlUpdate = deferLater(reactor, 5, self.__updateFileServerList)
 
+    def __getFileServerDB(self, file_hash):
+        try:
+            session = self.__create_session()
+            result = session.query(FileTable).filter_by(file_hash=file_hash).first()
+            if result is not None:
+                if result.server_id[0].status != 'OFFLINE':
+                    result = (result.server_id[0].ip, result.server_id[0].port)
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+        return result
+
+
     def __updateFileServerList(self):
         """
             Periodical update data about servers in balancer
@@ -323,7 +339,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
             Building serialized file list
         """
-        server = self.balancer.getFileServer(data['cmd'], data['file_hash'])
+        server = self.__getFileServerDB(data['file_hash'])
         if server is None:
             msg = "ERROR: Can't read now your file: servers in offline. Try later..."
             data['cmd'] = 'AUTH'
@@ -339,7 +355,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
             Delete file from record, and after this - from server
         """
-        server = self.balancer.getFileServer(data['cmd'], data['file_hash'])
+        server = self.__getFileServerDB(data['file_hash'])
         try:
             session = self.__create_session()
             if server is None:
@@ -407,7 +423,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 original_name = file[0]
                 server_name = file[1]
                 file_hash = file[2]
-                fs = self.balancer.getFileServer(data['cmd'], file_hash)
+                fs = self.__getFileServerDB(file_hash)
                 server.append((original_name, server_name) + (fs if fs else (None,)))
             data['server'] = server
             data['user_id'] = user_id
