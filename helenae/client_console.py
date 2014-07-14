@@ -6,7 +6,6 @@ import pickle
 from subprocess import Popen, PIPE, STDOUT
 from json import dumps, loads, dump
 from optparse import OptionParser
-from hashlib import md5
 from random import randint
 
 from twisted.python import log
@@ -14,28 +13,9 @@ from twisted.internet import reactor, ssl
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
 from utils import commands
+from utils.crypto.md5 import md5_for_file
 
 # TODO: Create plugins for future commands
-
-
-def md5_for_file(file_path, block_size=8192):
-    """
-        Calculating MD5 hash for file
-    """
-    size = 0
-    md5_hash = md5()
-    try:
-        size = os.path.getsize(file_path)
-        f = open(file_path, 'rb')
-        while True:
-            data = f.read(block_size)
-            if not data:
-                break
-            md5_hash.update(data)
-        f.close()
-    except IOError:
-        print 'ERROR: No such file or directory'
-    return md5_hash.hexdigest(), size
 
 
 class DFSClientProtocol(WebSocketClientProtocol):
