@@ -1,3 +1,4 @@
+import os
 import sys
 import datetime
 import pickle
@@ -274,14 +275,16 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 fileserver = session.query(FileServer).filter_by(ip=server_ip, port=port).first()
                 cnt_files = session.execute(func.count(FileTable.id)).fetchone()[0] + 1
                 # processing data
-                original_filename = data['file_path'].split('/')[-1]
+                user_path, original_filename = os.path.split(data['file_path'])
+                if not data['gui']:
+                    user_path = u''
                 filename, type_file = original_filename.split('.')
                 user_id = 'u' + str(user_db.id).rjust(14, '0')
                 file_id = str(cnt_files).rjust(24-len(type_file), '0') + '.' + type_file
                 data['server'] = server
                 data['json'] = ('WRITE_FILE', user_id, file_id, data['file_path'])
                 # write record into DB
-                new_file = FileTable(original_filename, file_id, data['file_hash'], data['file_size'], 0, catalog.id)
+                new_file = FileTable(original_filename, file_id, data['file_hash'], user_path, data['file_size'], 0, catalog.id)
                 new_file.server_id.append(fileserver)
                 session.add(new_file)
                 session.commit()
