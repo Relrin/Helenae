@@ -22,7 +22,7 @@ Running
 For start working with distributed file storage you will need:  
 1) Run the server.py by doing
 
-    python server.py 9000
+    python server.py [port]
 
 2) Start few (minimum one) file servers
 
@@ -35,7 +35,7 @@ For start working with distributed file storage you will need:
     
 or run the Python console client
 
-    python client_console.py 9000
+    python client_console.py [port]
     
 or run the Python GUI client
 
