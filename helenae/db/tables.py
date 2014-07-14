@@ -1,14 +1,12 @@
 from time import gmtime, strftime
 
-import sqlamp
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine
 from sqlalchemy import Integer, DateTime, Float, Boolean, String, Column, ForeignKey, Table
-from sqlalchemy.orm import relationship, relation
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 engine = create_engine('postgresql://user:password@localhost/csan')
-metadata = MetaData(engine)
-Base = declarative_base(metadata=metadata, metaclass=sqlamp.DeclarativeMeta)
+Base = declarative_base()
 
 
 class Users(Base):
@@ -105,21 +103,17 @@ class FileSpace(Base):
 
 class Catalog(Base):
     __tablename__ = 'catalog'
-    __mp_manager__ = 'mp'
     id = Column(Integer, primary_key=True)
     directory_name = Column(String, nullable=False, unique=True)
     last_modified = Column(DateTime, nullable=False)
     public_folder = Column(Boolean, nullable=False)
     file_id = relationship("File")
-    parent_id = Column(ForeignKey('catalog.id'), index=True)
-    parent = relation("Catalog", remote_side=[id])
     fs_id = Column(Integer, ForeignKey('filespace.id'))
 
-    def __init__(self, dir_name, public_folder=False, parent=None):
+    def __init__(self, dir_name, public_folder=False):
         self.directory_name = dir_name
         self.last_modified = strftime("%Y-%m-%d %H:%M:%S", gmtime())
         self.public_folder = public_folder
-        self.parent = parent
 
     def __repr__(self):
         return "<Catalog('%s','%s','%s')>" % (self.directory_name, self.last_modified, self.public_folder)
@@ -138,15 +132,17 @@ class File(Base):
     original_name = Column(String, nullable=False)
     server_name = Column(String, nullable=False)
     file_hash = Column(String, nullable=False)
+    user_path = Column(String, nullable=False)
     chunk_size = Column(Integer, nullable=False)
     chunk_number = Column(Integer, nullable=False)
     catalog_id = Column(Integer, ForeignKey("catalog.id"))
     server_id = relationship("FileServer", secondary=association_table)
 
-    def __init__(self, orig_name, serv_name, file_hash, chunk_size, chunk_number, catalog_id):
+    def __init__(self, orig_name, serv_name, file_hash, user_path, chunk_size, chunk_number, catalog_id):
         self.original_name = orig_name
         self.server_name = serv_name
         self.file_hash = file_hash
+        self.user_path = user_path
         self.chunk_size = chunk_size
         self.chunk_number = chunk_number
         self.catalog_id = catalog_id
