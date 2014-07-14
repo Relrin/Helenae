@@ -4,7 +4,6 @@ autobahn==0.8.1
 psycopg2==2.5.2
 pyOpenSSL==0.13.1
 zope.interface==4.1.0
-sqlamp==0.6
 Flask==0.10.1
 Flask-Admin==1.0.7
 Flask-Login==0.2.10
