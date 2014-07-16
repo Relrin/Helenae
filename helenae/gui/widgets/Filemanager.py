@@ -13,11 +13,10 @@ from validators.ValidatorMsgDlg import ValidatorMsgDialog as MsgDlg
 
 ID_BUTTON = 100
 ID_BUTTON_WRITE = 101
-ID_BUTTON_SYNC = 102
-ID_BUTTON_TRANSFER = 103
-ID_BUTTON_CREATE_FOLDER = 104
-ID_BUTTON_REMOVE_FILE = 105
-ID_BUTTON_RENAME = 106
+ID_BUTTON_TRANSFER = 102
+ID_BUTTON_CREATE_FOLDER = 103
+ID_BUTTON_REMOVE_FILE = 104
+ID_BUTTON_RENAME = 105
 ID_NEW = 150
 ID_FOLDER = 151
 ID_RENAME = 152
@@ -117,33 +116,29 @@ class FileManager(wx.Frame):
         # button panel
         self.sizer2 = wx.BoxSizer(wx.HORIZONTAL)
 
-        button1 = wx.Button(self, ID_BUTTON_WRITE, "F4 Запись")
+        button1 = wx.Button(self, ID_BUTTON_WRITE, "F5 Запись")
         button1.SetBackgroundColour('#BFD8DF')
         button1.SetForegroundColour("#2F4D57")
 
-        button2 = wx.Button(self, ID_BUTTON_SYNC, "F5 Синхр.")
+        button2 = wx.Button(self, ID_BUTTON_TRANSFER, "F6 Перенос")
         button2.SetBackgroundColour('#BFD8DF')
         button2.SetForegroundColour("#2F4D57")
 
-        button3 = wx.Button(self, ID_BUTTON_TRANSFER, "F6 Перенос")
+        button3 = wx.Button(self, ID_BUTTON_CREATE_FOLDER, "F7 Созд. каталог")
         button3.SetBackgroundColour('#BFD8DF')
         button3.SetForegroundColour("#2F4D57")
 
-        button4 = wx.Button(self, ID_BUTTON_CREATE_FOLDER, "F7 Созд. каталог")
+        button4 = wx.Button(self, ID_BUTTON_REMOVE_FILE, "F8 Удалить")
         button4.SetBackgroundColour('#BFD8DF')
         button4.SetForegroundColour("#2F4D57")
 
-        button5 = wx.Button(self, ID_BUTTON_REMOVE_FILE, "F8 Удалить")
+        button5 = wx.Button(self, ID_BUTTON_RENAME, "F9 Перемеиновать")
         button5.SetBackgroundColour('#BFD8DF')
         button5.SetForegroundColour("#2F4D57")
 
-        button6 = wx.Button(self, ID_BUTTON_RENAME, "F9 Перемеин.")
+        button6 = wx.Button(self, ID_EXIT, "F10 Выход")
         button6.SetBackgroundColour('#BFD8DF')
         button6.SetForegroundColour("#2F4D57")
-
-        button7 = wx.Button(self, ID_EXIT, "F10 Выход")
-        button7.SetBackgroundColour('#BFD8DF')
-        button7.SetForegroundColour("#2F4D57")
 
         self.sizer2.Add(button1, 1, wx.EXPAND)
         self.sizer2.Add(button2, 1, wx.EXPAND)
@@ -151,7 +146,6 @@ class FileManager(wx.Frame):
         self.sizer2.Add(button4, 1, wx.EXPAND)
         self.sizer2.Add(button5, 1, wx.EXPAND)
         self.sizer2.Add(button6, 1, wx.EXPAND)
-        self.sizer2.Add(button7, 1, wx.EXPAND)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.files_folder, 1,wx.EXPAND)

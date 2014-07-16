@@ -8,10 +8,12 @@ from hashlib import sha256
 # available commands and handlers
 commands_user = {"AUTH": "autorization with server",
                  "READ": "read some file from storage",
+                 "REAF": "massive read files from storage",
                  "WRTE": "write file into storage",
                  "DELT": "delete file from storage",
                  "RNME": "rename file",
                  "LIST": "get list of all files from storage with this user",
+                 "GETF": "getting all file info for GUI app",
                  "SYNC": "synchronize files with storage on the server",
                  "EXIT": "disconnect from server or end session"}
 
