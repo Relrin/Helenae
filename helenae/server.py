@@ -130,11 +130,13 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['FSRV'] = self.fileserver_auth
         handlers['AUTH'] = self.authorization
         handlers['READ'] = self.read_fs
+        handlers['REAF'] = self.read_fs_all
         handlers['WRTE'] = self.write_file
         handlers['DELT'] = self.delete_file
         handlers['RNME'] = self.rename_file
         handlers['SYNC'] = self.fileSync
         handlers['LIST'] = self.get_fs_structure
+        handlers['GETF'] = self.get_all_user_files
         return handlers
 
     def registration(self, data):
@@ -354,6 +356,37 @@ class DFSServerProtocol(WebSocketServerProtocol):
             log.msg('[READ] Getting data for User=%s has complete!' % (data['user']))
         return data
 
+    def read_fs_all(self, data):
+        """
+            Getting all data, which need for read all files (filename, path, server id and port)
+        """
+        try:
+            log.msg('[REAF] Getting data for User=%s' % (data['user']))
+            files_lst = []
+            session = self.__create_session()
+            fs_name = str(data['user'] + "_fs")
+            user_db = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user'])).fetchone()
+            user_id = 'u' + str(user_db.id).rjust(14, '0')
+            fs_db = session.execute(sqlalchemy.select([FileSpace]).where(FileSpace.storage_name == fs_name)).fetchone()
+            catalog = session.execute(sqlalchemy.select([Catalog]).where(Catalog.fs_id == fs_db.id)).fetchone()
+            for name, path in data['files_read']:
+                user_file = session.query(FileTable).filter_by(catalog_id=catalog.id, original_name=name, user_path=path).first()
+                servers = []
+                for server in user_file.server_id:
+                    servers.append((server.ip, server.port))
+                files_lst.append((name, path, user_file.server_name, servers))
+            data['cmd'] = 'CREA'
+            data['user_id'] = user_id
+            data['files_read'] = files_lst
+            log.msg('[REAF] Getting data for User=%s has complete!' % (data['user']))
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+        return data
+
     def delete_file(self, data):
         """
             Delete file from record, and after this - from server
@@ -426,7 +459,13 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 original_name = file[0]
                 server_name = file[1]
                 file_hash = file[2]
+                file_hash_new = file[3][0]
+                file_size = file[3][1]
                 fs = self.__getFileServerDB(file_hash)
+                if file_hash != file_hash_new and data['sync_type'] == 'WSYNC_FILE':
+                    dict_file = {"file_hash": file_hash_new, "chunk_size": file_size}
+                    session.query(FileTable).filter_by(original_name=original_name, file_hash=file_hash).update(dict_file)
+                    session.commit()
                 server.append((original_name, server_name) + (fs if fs else (None,)))
             data['server'] = server
             data['user_id'] = user_id
@@ -439,6 +478,28 @@ class DFSServerProtocol(WebSocketServerProtocol):
         finally:
             session.close()
             del data['files_u']
+        return data
+
+    def get_all_user_files(self, data):
+        try:
+            log.msg('[GETF] Getting all files for User=%s' % (data['user']))
+            files_lst = []
+            session = self.__create_session()
+            fs_name = str(data['user'] + "_fs")
+            fs_db = session.execute(sqlalchemy.select([FileSpace]).where(FileSpace.storage_name == fs_name)).fetchone()
+            catalog = session.execute(sqlalchemy.select([Catalog]).where(Catalog.fs_id == fs_db.id)).fetchone()
+            files = session.query(FileTable).filter_by(catalog_id=catalog.id)
+            for record in files.yield_per(1):
+                files_lst.append((record.original_name, record.user_path))
+            data['cmd'] = 'READ'
+            data['files_read'] = files_lst
+            log.msg('[GETF] GETF data for User=%s has complete!' % (data['user']))
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
         return data
 
     def onMessage(self, payload, isBinary):
