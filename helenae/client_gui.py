@@ -4,16 +4,20 @@
     At this file, as you can see, written wrapper for GUI, which founded in /gui/ folder.
     For UI using only wxPython. Also "patched" twisted event-loop for support event-loop from wxPython
 """
-from json import loads, dumps
+import os
+from json import loads, dumps, dump
+from random import randint
+from subprocess import Popen, PIPE, STDOUT
 
 import wx
 from twisted.internet import wxreactor
 wxreactor.install()
 
-from twisted.internet import reactor, ssl
+from twisted.internet import reactor, ssl, threads
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
 from utils import commands
+from utils.wx.CustomEvents import UpdateFileListCtrlEvent, EVT_UPDATE_FILE_LIST_CTRL
 from gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
 from gui.widgets.RegisterCtrl import ID_BUTTON_REG
 from gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
@@ -26,6 +30,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
     gui = None
 
     def __init__(self):
+        self.login = None
         self.commands = self.__initHandlers()
 
     def __initHandlers(self):
@@ -33,15 +38,22 @@ class GUIClientProtocol(WebSocketClientProtocol):
         # basic commands
         handlers['AUTH'] = self.__AUTH
         handlers['CREG'] = self.__CREG
+        handlers['READ'] = self.__READ
         # continues operations...
         handlers['RAUT'] = self.__RAUT
         handlers['RREG'] = self.__RREG
+        handlers['CREA'] = self.__CREA
         return handlers
 
     def initBindings(self):
         self.gui.Bind(wx.EVT_BUTTON, self.__StartAuth, id=ID_BUTTON_ACCEPT)
         self.gui.RegisterWindow.Bind(wx.EVT_BUTTON, self.__StartRegistration, id=ID_BUTTON_REG)
         self.gui.Bind(wx.EVT_BUTTON, self.onEndRegister, id=ID_BUTTON_CLOSE_MSG)
+        self.gui.Bind(EVT_UPDATE_FILE_LIST_CTRL, self.onUpdateListCtrl)
+
+    def __SendInfoToFileServer(self, json_path, ip, port):
+        p = Popen(["python", "./fileserver_client.py", str(json_path), str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        result = p.communicate()[0]
 
     def __StartAuth(self, event):
         """
@@ -89,9 +101,12 @@ class GUIClientProtocol(WebSocketClientProtocol):
             pathToUserFolder = self.gui.FileManager.options_frame.notebook.tabBasicPreferences.InputUserFolder.GetValue()
             self.gui.FileManager.files_folder.setCurrentDir(pathToUserFolder)
             self.gui.FileManager.files_folder.setUsersDir(pathToUserFolder)
-            self.gui.FileManager.files_folder.showFilesInDirectory( self.gui.FileManager.files_folder.currentDir)
+            self.gui.FileManager.files_folder.showFilesInDirectory(self.gui.FileManager.files_folder.currentDir)
             self.gui.FileManager.sb.SetStatusText(pathToUserFolder)
             self.gui.FileManager.Show()
+            self.login = data['user']
+            data = dumps({'cmd': 'GETF', 'user': data['user'], 'auth': True, 'error': []})
+            self.sendMessage(data, sync=True)
 
     def __RAUT(self, data):
         """
@@ -124,6 +139,48 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 self.gui.RegisterWindow.ShowErrorPassword('Пароль должен содержать минимум 6 символов!')
             if "Full name can't be empty!" in error_msg:
                 self.gui.RegisterWindow.ShowErrorName('Это поле не может быть пустым!')
+
+    def __READ(self, data):
+        base_dir = self.gui.FileManager.options_frame.notebook.tabBasicPreferences.InputUserFolder.GetValue() + '/'
+        read_files = filter(lambda (folder, name): not os.path.exists(base_dir+folder+name), data['files_read'])
+        del data['files_read']
+        data = dumps({'cmd': 'REAF', 'user': self.login, 'auth': True, 'error': [], 'files_read': read_files})
+        self.sendMessage(data, sync=True)
+
+    def __CREA(self, data):
+        """
+            Massive reading files from file storage, using threads in Twisted
+        """
+        key = self.gui.FileManager.options_frame.getCryptoKey()
+        tmp_dir = self.gui.FileManager.options_frame.tmpFolder
+        user_folder = self.gui.FileManager.files_folder.getUsersDir()
+
+        def defferedReadFile(user_id, name, path, file_id, servers):
+            new_folders = os.path.normpath(tmp_dir + '/' + path)
+            try:
+                os.makedirs(new_folders)
+            except OSError:
+                pass
+            for ip, port in servers:
+                src_file = os.path.normpath(user_folder + '/' + name)
+                server_ip = str(ip)
+                server_port = str(port)
+                json_file = str(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
+                with open(json_file, 'w+') as f:
+                    dict_json = {"cmd": "READU_FILE", "user": user_id, "file_id": file_id, "src_file": src_file,
+                                 "password": key}
+                    dump(dict_json, f)
+                self.__SendInfoToFileServer(json_file, server_ip, server_port)
+                evt = UpdateFileListCtrlEvent()
+                wx.PostEvent(self.gui, evt)
+
+        for name, path, file_id, servers in data['files_read']:
+                threads.deferToThread(defferedReadFile, data['user_id'], name, path, file_id, servers)
+        del data['files_read']
+        del data['user_id']
+
+    def onUpdateListCtrl(self, event):
+        self.gui.FileManager.files_folder.showFilesInDirectory(self.gui.FileManager.files_folder.currentDir)
 
     def onOpen(self):
         self.factory._proto = self
