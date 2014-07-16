@@ -1,6 +1,11 @@
 # -*- coding: utf-8
 import os
 import wx
+import random
+import string
+
+from InputDialogCtrl import InputDialog
+from validators.KeyValidator import KeyValidator
 
 ID_NOTEBOOK_CTRL = 2000
 ID_BUTTON_SAVE = 2001
@@ -9,11 +14,14 @@ ID_TAB_ONE = 2003
 ID_TAB_ONE_CRYPTO_CHECKBOX = 2004
 ID_TAB_ONE_INPUT_USER_FOLDER = 2005
 ID_TAB_ONE_INPUT_USER_BUTTON = 2006
+ID_TAB_ONE_INPUT_CRYPT_PSW = 2007
+ID_TAB_ONE_INPUT_CRYPT_BUTTON = 2008
 
 
 class TabPanelBasics(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent, id=ID_TAB_ONE)
+        self.parent = parent
 
         self.LabelCrypto = wx.StaticText(self, label='Алгоритм шифрования:', pos=(15, 15))
 
@@ -25,18 +33,36 @@ class TabPanelBasics(wx.Panel):
         self.InputUserFolder.SetBackgroundColour('#D9D9D9')
         self.InputButton = wx.Button(self, id=ID_TAB_ONE_INPUT_USER_BUTTON, label='..', size=(25, 23), pos=(350, 40))
 
+        self.LabelCryptPassword= wx.StaticText(self, label='Ключ шифрования:', pos=(15, 75))
+        self.InputCryptPassword = wx.TextCtrl(self, ID_TAB_ONE_INPUT_CRYPT_PSW, size=(214, -1), pos=(130, 70), style=wx.TE_READONLY)
+        self.InputCryptPassword.SetBackgroundColour('#D9D9D9')
+        self.InputButton = wx.Button(self, id=ID_TAB_ONE_INPUT_CRYPT_BUTTON, label='..', size=(25, 23), pos=(350, 70))
+
+        self.error_login = wx.StaticText(self, label='В случае удаления файла с настройками, ключ шифрования будет\nтакже утерян! Пожалуйста, сохраните где-нибудь ключ шифрования!', pos=(15, 155))
+        self.error_login.SetForegroundColour('#DE4421')
+        self.error_login.SetFont((wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+
         self.FolderDialog = wx.DirDialog(self, "Выберите каталог для хранения файлов", "", wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
 
         self.Bind(wx.EVT_BUTTON, self.ShowDirDialog, id=ID_TAB_ONE_INPUT_USER_BUTTON)
+        self.Bind(wx.EVT_BUTTON, self.InputCryptoKey, id=ID_TAB_ONE_INPUT_CRYPT_BUTTON)
 
     def ShowDirDialog(self, event):
         if self.FolderDialog.ShowModal() == wx.ID_OK:
            self.InputUserFolder.SetValue(self.FolderDialog.GetPath())
 
+    def InputCryptoKey(self, event):
+        dlg = InputDialog(self, -1, 'Введите ключ шифования', self.parent.parent.ico_folder, KeyValidator())
+        dlg.ShowModal()
+        if dlg.result is not None:
+            self.InputCryptPassword.SetValue(dlg.result)
+        dlg.Destroy()
+
 
 class NotebookCtrl(wx.Notebook):
-    def __init__(self, parent):
+    def __init__(self, parent, frame):
         wx.Notebook.__init__(self, parent, id=ID_NOTEBOOK_CTRL, style=wx.BK_DEFAULT)
+        self.parent = frame
 
         self.tabBasicPreferences = TabPanelBasics(self)
         self.AddPage(self.tabBasicPreferences, "Общие")
@@ -64,6 +90,7 @@ class OptionsCtrl(wx.Frame):
     def __init__(self, parent, id, title, ico_folder):
         wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
         self.parent = parent
+        self.ico_folder = ico_folder
 
         # user preferences
         self.userFolder = './user/'
@@ -71,7 +98,7 @@ class OptionsCtrl(wx.Frame):
         self.panel = wx.Panel(self)
 
         # option tabs
-        self.notebook = NotebookCtrl(self.panel)
+        self.notebook = NotebookCtrl(self.panel, self)
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.notebook, 1, wx.ALL | wx.EXPAND, 5)
 
@@ -99,9 +126,17 @@ class OptionsCtrl(wx.Frame):
         self.__setUserFolder()
         self.createUsersFolder()
 
+    def generateKey(self):
+        key = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for x in xrange(32))
+        self.notebook.tabBasicPreferences.InputCryptPassword.SetValue(key)
+
+    def getCryptoKey(self):
+        return self.notebook.tabBasicPreferences.InputCryptPassword.GetValue()
+
     def __setUserFolder(self):
         sp = wx.StandardPaths.Get()
         self.userFolder = sp.GetDocumentsDir() + '/CloudStorage/users/'
+        self.tmpFolder = sp.GetDocumentsDir() + '/CloudStorage/users/tmp/'
 
     def setUserOptionsPath(self, user):
         self.userOptionsPath = self.userFolder + user + '.opt'
@@ -112,6 +147,7 @@ class OptionsCtrl(wx.Frame):
         pathToUserFolder = self.notebook.tabBasicPreferences.FolderDialog.GetPath()
         self.notebook.tabBasicPreferences.InputUserFolder.SetValue(pathToUserFolder)
         self.parent.files_folder.showFilesInDirectory(pathToUserFolder)
+        self.generateKey()
 
     def createUsersFolder(self):
         if not os.path.exists(self.userFolder):
@@ -130,16 +166,19 @@ class OptionsCtrl(wx.Frame):
         shelve = shelve.open(self.userOptionsPath)
         self.notebook.tabBasicPreferences.ComboBox.SetValue(shelve['crypto-alg'])
         self.notebook.tabBasicPreferences.InputUserFolder.SetValue(shelve['user-folder'])
+        self.notebook.tabBasicPreferences.InputCryptPassword.SetValue(shelve['crypto-key'])
         shelve.close()
 
     def writeUserSetting(self):
         import shelve
         shelve = shelve.open(self.userOptionsPath, writeback=True)
-        userFolder = self.notebook.tabBasicPreferences.InputUserFolder.GetValue()
+        userFolder = self.notebook.tabBasicPreferences.InputUserFolder.GetValue() + '/'
         self.parent.sb.SetStatusText(userFolder)
         self.parent.files_folder.setCurrentDir(userFolder)
+        self.parent.files_folder.setUsersDir(userFolder)
         self.parent.files_folder.showFilesInDirectory(userFolder)
         shelve['crypto-alg'] = self.notebook.tabBasicPreferences.ComboBox.GetValue()
+        shelve['crypto-key'] = self.notebook.tabBasicPreferences.InputCryptPassword.GetValue()
         shelve['user-folder'] = userFolder
         shelve.close()
 
