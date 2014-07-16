@@ -66,6 +66,9 @@ class FileListCtrl(wx.ListCtrl):
         if not self.defaultDir.endswith('/'):
             self.defaultDir += '/'
 
+    def getUsersDir(self):
+        return self.defaultDir
+
     def insertUpDirectory(self):
         #up from this folder to '..'
         self.InsertStringItem(0, '..')
