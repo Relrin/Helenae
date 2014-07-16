@@ -360,16 +360,33 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 self.print_storage_files()
                 self.__filenumber = self.inputFileNumber()
             self.__filenumber = int(self.__filenumber) - 1
-            files = [(self.__files[self.__filenumber].original_name, self.__files[self.__filenumber].server_name,
-                    self.__files[self.__filenumber].file_hash)]
             op_type = 'Unknown'
             while op_type not in ('WSYNC', 'RSYNC'):
                 self.clear_console()
                 self.print_sync_operations()
                 op_type = raw_input('Command:').upper()
             op_type += '_FILE'
+            # checking entered path by user
+            file_original_name = self.__files[self.__filenumber].original_name
+            file_format_db = file_original_name.split('.')[-1]
+            file_path_src = ''
+            while file_path_src == '':
+                self.clear_console()
+                print 'NOTE: file shall be have equals format!'
+                print 'Enter path to file, which using to store information'
+                file_path_src = raw_input('Path to %s:' % (file_original_name))
+                file_format = file_path_src.split('/')[-1].split('.')[-1]
+                if len(file_format[0]) == 0:
+                    file_path_src = ''
+                if file_format != file_format_db:
+                    file_path_src = ''
+                if not os.path.exists(file_path_src):
+                    file_path_src = ''
+            new_hash = md5_for_file(file_path_src)
+            files = [(self.__files[self.__filenumber].original_name, self.__files[self.__filenumber].server_name,
+                    self.__files[self.__filenumber].file_hash, new_hash)]
             data = commands.constructDataClient('SYNC', data['user'], data['password'], True,
-                                                files_u=files, sync_type=op_type)
+                                                files_u=files, sync_type=op_type, file_path_src=file_path_src)
         return data
 
     def __CSYN(self, data):
@@ -378,21 +395,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
         after_sync = []
         for data_file in data['server']:
-            file_path = ''
-            file_format_db = data_file[0].split('.')[-1]
-            # checking entered path by user
-            while file_path == '':
-                self.clear_console()
-                print 'NOTE: file shall be have equals format!'
-                print 'Enter path to file, which using to store information:'
-                file_path = raw_input('Path to %s:' % (data_file[0]))
-                file_format = file_path.split('/')[-1].split('.')[-1]
-                if len(file_format[0]) == 0:
-                    file_path = ''
-                if file_format != file_format_db:
-                    file_path = ''
-                if not os.path.exists(file_path):
-                    file_path = ''
+            file_path = data['file_path_src']
             if data_file[2] is None:
                 after_sync.append([data_file[0],'Cant sync, because server is unavailable!'])
             else:
@@ -416,6 +419,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         del data['user_id']
         del data['server']
         del data['sync_type']
+        del data['file_path_src']
         return data
 
     def clear_console(self):
@@ -453,7 +457,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Print available commands into console
         """
         print "Available commands:"
-        for cmd in sorted(self.commands.keys()):
+        for cmd in filter(lambda command: command not in ("REAF", "GETF"), sorted(self.commands.keys())):
             print "\t%s \t %s" % (cmd, self.commands[cmd])
 
     def inputData(self):
