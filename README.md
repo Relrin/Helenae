@@ -37,14 +37,13 @@ or run the Python console client
 
     python client_console.py [port]
     
-![alt text](https://raw.githubusercontent.com/Relrin/Helenae/master/screenshots/client_console.png)    
+<img style="float: right" src="https://raw.githubusercontent.com/Relrin/Helenae/master/screenshots/client_console.png" />
     
 or run the Python GUI client
 
     python client_gui.py
 
-![alt text](https://raw.githubusercontent.com/Relrin/Helenae/master/screenshots/client_gui.png)
-
+<img style="float: right" src="https://raw.githubusercontent.com/Relrin/Helenae/master/screenshots/client_gui.png" />
 
 Creating Server Keys and Certificates
 -------------------------------------
