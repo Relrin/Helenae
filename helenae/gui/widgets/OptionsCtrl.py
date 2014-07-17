@@ -152,6 +152,13 @@ class OptionsCtrl(wx.Frame):
     def createUsersFolder(self):
         if not os.path.exists(self.userFolder):
             os.makedirs(self.userFolder)
+        if not os.path.exists(self.tmpFolder):
+            os.makedirs(self.tmpFolder)
+
+    def checkUserFolder(self):
+        userFolder = self.notebook.tabBasicPreferences.InputUserFolder.GetValue() + '/'
+        if not os.path.exists(userFolder):
+            os.makedirs(userFolder)
 
     def createOptionsFile(self):
         if not os.path.exists(self.userOptionsPath):
@@ -167,6 +174,7 @@ class OptionsCtrl(wx.Frame):
         self.notebook.tabBasicPreferences.ComboBox.SetValue(shelve['crypto-alg'])
         self.notebook.tabBasicPreferences.InputUserFolder.SetValue(shelve['user-folder'])
         self.notebook.tabBasicPreferences.InputCryptPassword.SetValue(shelve['crypto-key'])
+        self.checkUserFolder()
         shelve.close()
 
     def writeUserSetting(self):
