@@ -165,7 +165,10 @@ class FileListCtrl(wx.ListCtrl):
         selection = []
         index = self.GetFirstSelected()
         selection.append(self.getFullnameItem(index))
+        if selection[0] in (u'', u'..'):
+            return []
         while len(selection) != self.GetSelectedItemCount():
             index = self.GetNextSelected(index)
-            selection.append(self.getFullnameItem(index))
+            if self.getFullnameItem(index) not in (u'', u'..'):
+                selection.append(self.getFullnameItem(index))
         return selection

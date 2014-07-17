@@ -137,6 +137,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['SYNC'] = self.fileSync
         handlers['LIST'] = self.get_fs_structure
         handlers['GETF'] = self.get_all_user_files
+        handlers['WRTF'] = self.massive_write_files
         return handlers
 
     def registration(self, data):
@@ -494,6 +495,59 @@ class DFSServerProtocol(WebSocketServerProtocol):
             data['cmd'] = 'READ'
             data['files_read'] = files_lst
             log.msg('[GETF] GETF data for User=%s has complete!' % (data['user']))
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+        return data
+
+    def massive_write_files(self, data):
+        try:
+            log.msg('[WRTF] Massive write files for User=%s' % (data['user']))
+            files_lst = []
+            session = self.__create_session()
+            fs_name = str(data['user'] + "_fs")
+            user_db = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user'])).fetchone()
+            user_id = 'u' + str(user_db.id).rjust(14, '0')
+            fs_db = session.execute(sqlalchemy.select([FileSpace]).where(FileSpace.storage_name == fs_name)).fetchone()
+            catalog = session.execute(sqlalchemy.select([Catalog]).where(Catalog.fs_id == fs_db.id)).fetchone()
+            for name, path, file_hash_new, size in data['files_write']:
+                file_path = path.replace(data['default_dir'] , '')
+                user_file = session.query(FileTable).filter_by(catalog_id=catalog.id, original_name=name, user_path=file_path).first()
+                # if file not exists, then add record to database and write file in fileserver
+                if user_file is None:
+                    server = self.balancer.getFileServer("WRTE", file_hash_new)
+                    if server is not None:
+                        server_ip = str(server[0])
+                        port = int(server[1])
+                        fileserver = session.query(FileServer).filter_by(ip=server_ip, port=port).first()
+                        cnt_files = session.execute(func.count(FileTable.id)).fetchone()[0] + 1
+                        # processing data
+                        filename, type_file = name.split('.')
+                        file_id = str(cnt_files).rjust(24-len(type_file), '0') + '.' + type_file
+                        # write record into DB
+                        new_file = FileTable(name, file_id, file_hash_new, file_path, size, 0, catalog.id)
+                        new_file.server_id.append(fileserver)
+                        session.add(new_file)
+                        session.commit()
+                        servers = []
+                        servers.append((server_ip, port))
+                        files_lst.append(('WRITE_FILE', name, path, file_id, servers))
+                # if file already exists, then just sync with file on fileserver
+                elif user_file.file_hash != file_hash_new:
+                    user_file.file_hash = file_hash_new
+                    user_file.chunk_size = size
+                    servers = []
+                    for server in user_file.server_id:
+                        servers.append((server.ip, server.port))
+                    files_lst.append(('WSYNC_FILE', name, path, user_file.server_name, servers))
+                    session.commit()
+            data['cmd'] = 'CWRT'
+            data['user_id'] = user_id
+            data['files_write'] = files_lst
+            log.msg('[WRTF] WRTF for User=%s has complete!' % (data['user']))
         except sqlalchemy.exc.ArgumentError:
             log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
         except sqlalchemy.exc.CompileError:

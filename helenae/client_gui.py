@@ -17,8 +17,10 @@ from twisted.internet import reactor, ssl, threads
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
 from utils import commands
+from utils.crypto.md5 import md5_for_file
 from utils.wx.CustomEvents import UpdateFileListCtrlEvent, EVT_UPDATE_FILE_LIST_CTRL
 from gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
+from gui.widgets.Filemanager import ID_BUTTON_WRITE, ID_WRITE
 from gui.widgets.RegisterCtrl import ID_BUTTON_REG
 from gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
 
@@ -39,10 +41,12 @@ class GUIClientProtocol(WebSocketClientProtocol):
         handlers['AUTH'] = self.__AUTH
         handlers['CREG'] = self.__CREG
         handlers['READ'] = self.__READ
+        handlers['WRTE'] = self.__WRTE
         # continues operations...
         handlers['RAUT'] = self.__RAUT
         handlers['RREG'] = self.__RREG
         handlers['CREA'] = self.__CREA
+        handlers['CWRT'] = self.__CWRT
         return handlers
 
     def initBindings(self):
@@ -50,6 +54,8 @@ class GUIClientProtocol(WebSocketClientProtocol):
         self.gui.RegisterWindow.Bind(wx.EVT_BUTTON, self.__StartRegistration, id=ID_BUTTON_REG)
         self.gui.Bind(wx.EVT_BUTTON, self.onEndRegister, id=ID_BUTTON_CLOSE_MSG)
         self.gui.Bind(EVT_UPDATE_FILE_LIST_CTRL, self.onUpdateListCtrl)
+        self.gui.Bind(wx.EVT_BUTTON, self.__WRTE, id=ID_BUTTON_WRITE)
+        self.gui.Bind(wx.EVT_MENU, self.__WRTE, id=ID_WRITE)
 
     def __SendInfoToFileServer(self, json_path, ip, port):
         p = Popen(["python", "./fileserver_client.py", str(json_path), str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
@@ -156,16 +162,16 @@ class GUIClientProtocol(WebSocketClientProtocol):
         user_folder = self.gui.FileManager.files_folder.getUsersDir()
 
         def defferedReadFile(user_id, name, path, file_id, servers):
-            new_folders = os.path.normpath(tmp_dir + '/' + path)
+            new_folders = os.path.normpath(user_folder + '/' + path)
             try:
                 os.makedirs(new_folders)
             except OSError:
                 pass
             for ip, port in servers:
-                src_file = os.path.normpath(user_folder + '/' + name)
+                src_file = os.path.normpath(user_folder + '/' + path + '/' + name)
                 server_ip = str(ip)
                 server_port = str(port)
-                json_file = str(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
+                json_file = os.path.normpath(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
                 with open(json_file, 'w+') as f:
                     dict_json = {"cmd": "READU_FILE", "user": user_id, "file_id": file_id, "src_file": src_file,
                                  "password": key}
@@ -177,6 +183,58 @@ class GUIClientProtocol(WebSocketClientProtocol):
         for name, path, file_id, servers in data['files_read']:
                 threads.deferToThread(defferedReadFile, data['user_id'], name, path, file_id, servers)
         del data['files_read']
+        del data['user_id']
+
+    def __WRTE(self, data):
+        """
+            Handler for massive write file from user directory to file servers
+        """
+        selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
+        if len(selectedItems) == 0:
+            wx.MessageBox("Для записи надо выбрать минимум один файл или каталог!", "Сообщение")
+        else:
+            write_files = []
+            defaultDir = self.gui.FileManager.files_folder.defaultDir
+            currentDir = self.gui.FileManager.files_folder.currentDir
+            for item in selectedItems:
+                path = os.path.normpath(currentDir + item)
+                if os.path.isfile(path):
+                    file_hash, size = md5_for_file(path)
+                    write_files.append((item, currentDir, file_hash, size))
+                elif os.path.isdir(path):
+                    for root, dirnames, filenames in os.walk(path):
+                        for filename in filenames:
+                            folder = os.path.normpath(root) + '/'
+                            file_path = os.path.normpath(os.path.join(root, filename))
+                            file_hash, size = md5_for_file(file_path)
+                            write_files.append((filename, folder, file_hash, size))
+            data = dumps({'cmd': 'WRTF', 'user': self.login, 'auth': True, 'error': [], 'files_write': write_files,
+                          'default_dir': defaultDir})
+            self.sendMessage(data, sync=True)
+
+    def __CWRT(self, data):
+        """
+            Multithreating write files to file servers
+        """
+        key = self.gui.FileManager.options_frame.getCryptoKey()
+        tmp_dir = self.gui.FileManager.options_frame.tmpFolder
+        user_folder = self.gui.FileManager.files_folder.getUsersDir()
+
+        def defferedWriteFile(user_id, cmd, name, path, file_id, servers):
+            for server in servers:
+                server_ip = str(server[0])
+                server_port = str(server[1])
+                src_file = os.path.normpath(path + '/' + name)
+                json_file = os.path.normpath(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
+                with open(json_file, 'w+') as f:
+                    dict_json = {"cmd": cmd, "user": user_id, "file_id": file_id, "src_file": src_file,
+                                 "password": key}
+                    dump(dict_json, f)
+                self.__SendInfoToFileServer(json_file, server_ip, server_port)
+
+        for cmd, name, path, file_id, servers in data['files_write']:
+            threads.deferToThread(defferedWriteFile, data['user_id'], cmd, name, path, file_id, servers)
+        del data['files_write']
         del data['user_id']
 
     def onUpdateListCtrl(self, event):
