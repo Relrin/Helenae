@@ -5,6 +5,7 @@
     For UI using only wxPython. Also "patched" twisted event-loop for support event-loop from wxPython
 """
 import os
+import shutil
 from json import loads, dumps, dump
 from random import randint
 from subprocess import Popen, PIPE, STDOUT
@@ -20,9 +21,12 @@ from utils import commands
 from utils.crypto.md5 import md5_for_file
 from utils.wx.CustomEvents import UpdateFileListCtrlEvent, EVT_UPDATE_FILE_LIST_CTRL
 from gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
-from gui.widgets.Filemanager import ID_BUTTON_WRITE, ID_WRITE
+from gui.widgets.Filemanager import ID_BUTTON_WRITE, ID_WRITE, ID_BUTTON_REMOVE_FILE, ID_REMOVE, ID_BUTTON_RENAME, ID_RENAME
 from gui.widgets.RegisterCtrl import ID_BUTTON_REG
 from gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
+from gui.widgets.InputDialogCtrl import InputDialog
+from gui.widgets.validators.RenameValidator import RenameValidator
+from gui.widgets.validators.ValidatorMsgDlg import ValidatorMsgDialog as MsgDlg
 
 # TODO: Add event handlers for Twisted
 # TODO: Add login/registration/options/about window
@@ -42,11 +46,15 @@ class GUIClientProtocol(WebSocketClientProtocol):
         handlers['CREG'] = self.__CREG
         handlers['READ'] = self.__READ
         handlers['WRTE'] = self.__WRTE
+        handlers['DELT'] = self.__DELT
+        handlers['RENF'] = self.__RENF
         # continues operations...
         handlers['RAUT'] = self.__RAUT
         handlers['RREG'] = self.__RREG
         handlers['CREA'] = self.__CREA
         handlers['CWRT'] = self.__CWRT
+        handlers['CDLT'] = self.__CDLT
+        handlers['CREN'] = self.__CREN
         return handlers
 
     def initBindings(self):
@@ -56,6 +64,10 @@ class GUIClientProtocol(WebSocketClientProtocol):
         self.gui.Bind(EVT_UPDATE_FILE_LIST_CTRL, self.onUpdateListCtrl)
         self.gui.Bind(wx.EVT_BUTTON, self.__WRTE, id=ID_BUTTON_WRITE)
         self.gui.Bind(wx.EVT_MENU, self.__WRTE, id=ID_WRITE)
+        self.gui.Bind(wx.EVT_BUTTON, self.__DELT, id=ID_BUTTON_REMOVE_FILE)
+        self.gui.Bind(wx.EVT_MENU, self.__DELT, id=ID_REMOVE)
+        self.gui.Bind(wx.EVT_BUTTON, self.__RENF, id=ID_BUTTON_RENAME)
+        self.gui.Bind(wx.EVT_MENU, self.__RENF, id=ID_RENAME)
 
     def __SendInfoToFileServer(self, json_path, ip, port):
         p = Popen(["python", "./fileserver_client.py", str(json_path), str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
@@ -185,7 +197,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         del data['files_read']
         del data['user_id']
 
-    def __WRTE(self, data):
+    def __WRTE(self, event):
         """
             Handler for massive write file from user directory to file servers
         """
@@ -218,7 +230,6 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
         key = self.gui.FileManager.options_frame.getCryptoKey()
         tmp_dir = self.gui.FileManager.options_frame.tmpFolder
-        user_folder = self.gui.FileManager.files_folder.getUsersDir()
 
         def defferedWriteFile(user_id, cmd, name, path, file_id, servers):
             for server in servers:
@@ -236,6 +247,138 @@ class GUIClientProtocol(WebSocketClientProtocol):
             threads.deferToThread(defferedWriteFile, data['user_id'], cmd, name, path, file_id, servers)
         del data['files_write']
         del data['user_id']
+
+    def __DELT(self, event):
+        """
+            Create request for delete files
+        """
+        selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
+        if len(selectedItems) == 0:
+            wx.MessageBox("Для удаления надо выбрать минимум один файл или каталог!", "Сообщение")
+        else:
+            deleted_files = []
+            defaultDir = self.gui.FileManager.files_folder.defaultDir
+            currentDir = self.gui.FileManager.files_folder.currentDir
+            for item in selectedItems:
+                path = os.path.normpath(currentDir + item)
+                if os.path.isfile(path):
+                    file_hash, size = md5_for_file(path)
+                    deleted_files.append((item, currentDir, file_hash, size))
+                elif os.path.isdir(path):
+                    for root, dirnames, filenames in os.walk(path):
+                        for filename in filenames:
+                            folder = os.path.normpath(root) + '/'
+                            file_path = os.path.normpath(os.path.join(root, filename))
+                            file_hash, size = md5_for_file(file_path)
+                            deleted_files.append((filename, folder, file_hash, size))
+            data = dumps({'cmd': 'DELF', 'user': self.login, 'auth': True, 'error': [], 'deleted_files': deleted_files,
+                          'default_dir': defaultDir})
+            self.sendMessage(data, sync=True)
+
+    def __CDLT(self, data):
+        """
+            Multithreating delete files
+        """
+        key = self.gui.FileManager.options_frame.getCryptoKey()
+        tmp_dir = self.gui.FileManager.options_frame.tmpFolder
+
+        def defferedDeleteFile(user_id, cmd, name, path, file_id, servers):
+            for server in servers:
+                server_ip = str(server[0])
+                server_port = str(server[1])
+                src_file = os.path.normpath(path + '/' + name)
+                json_file = os.path.normpath(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
+                with open(json_file, 'w+') as f:
+                    dict_json = {"cmd": cmd, "user": user_id, "file_id": file_id, "src_file": src_file, "password": key}
+                    dump(dict_json, f)
+                self.__SendInfoToFileServer(json_file, server_ip, server_port)
+                try:
+                    if os.path.isfile(src_file):
+                        os.remove(src_file)
+                    if os.path.isdir(path):
+                        root_dir = self.gui.FileManager.files_folder.defaultDir
+                        fileInFolder = len(os.walk(path).next()[2])
+                        if fileInFolder == 0:
+                            for root, dirs, files in os.walk(path, topdown=False):
+                                for name in files:
+                                    os.remove(os.path.join(root, name))
+                                for name in dirs:
+                                    path_to_folder = os.path.join(root, name)
+                                    if os.path.exists(path_to_folder):
+                                        os.rmdir(path_to_folder)
+                                if root != root_dir:
+                                    parentDir = self.gui.FileManager.files_folder.getParentDir(root)
+                                    if self.gui.FileManager.files_folder.currentDir == root:
+                                        self.gui.FileManager.files_folder.currentDir = parentDir
+                                    os.chdir(parentDir)
+                                    if os.path.exists(root):
+                                        os.rmdir(root)
+                except IOError:
+                    pass
+                evt = UpdateFileListCtrlEvent()
+                wx.PostEvent(self.gui, evt)
+
+        for cmd, name, path, file_id, servers in data['deleted_files']:
+            threads.deferToThread(defferedDeleteFile, data['user_id'], cmd, name, path, file_id, servers)
+        del data['deleted_files']
+        del data['user_id']
+
+    def __RENF(self, event):
+        """
+            Rename file or folder and contains in him files
+        """
+        selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
+        if len(selectedItems) != 1:
+            wx.MessageBox("Для операции перемеинования надо выбрать один файл или каталог!", "Сообщение")
+        else:
+            rnm_files = []
+            currentDir = self.gui.FileManager.files_folder.currentDir
+            defaultDir = self.gui.FileManager.files_folder.defaultDir
+            dlg = InputDialog(self.gui, -1, "Введите новое имя файла или каталога", "./gui", RenameValidator())
+            dlg.ShowModal()
+            if dlg.result is not None:
+                file_path = currentDir + selectedItems[0]
+                if os.path.isfile(file_path):
+                    path, file = os.path.split(file_path)
+                    file_hash, size = md5_for_file(file_path)
+                    file_name_part = os.path.splitext(file)
+                    file_name_part = (dlg.result, file_name_part[1])
+                    new_filename = ''.join(file_name_part)
+                    path = new_path = currentDir.replace(defaultDir, '')
+                    rnm_files.append((file, path, file_hash, new_filename, new_path))
+                    os.rename(currentDir+file, currentDir+new_filename)
+                elif os.path.isdir(file_path):
+                    file_path += '/'
+                    file_path_lst = filter(lambda item: item != '', file_path.split('/'))
+                    new_folder_lst = file_path_lst[:]
+                    new_folder_lst[-1] = dlg.result
+                    new_folder_path = '/' + '/'.join(new_folder_lst) + '/'
+                    for root, subdir, files in os.walk(file_path):
+                        for filename in files:
+                            file_in_folder_path = os.path.join(root, filename)
+                            file_hash, size = md5_for_file(file_in_folder_path)
+                            old_folder, name = os.path.split(file_in_folder_path)
+                            new_folder = filter(lambda item: item != '', old_folder.split('/'))
+                            new_folder[len(file_path_lst)-1] = dlg.result
+
+                            backup = new_folder_lst[:]
+                            if len(new_folder) > len(new_folder_lst):
+                                for elem_path in xrange(len(new_folder_lst), len(new_folder)):
+                                    backup.append(new_folder[elem_path])
+
+                            full_new_folder = '/' + '/'.join(backup) + '/'
+                            full_new_folder = full_new_folder.replace(defaultDir, '')
+                            full_old_folder = old_folder.replace(defaultDir, '') + '/'
+                            rnm_files.append((filename, full_old_folder, file_hash, filename, full_new_folder))
+                    shutil.move(file_path, new_folder_path)
+            data = dumps({'cmd': 'RENF', 'user': self.login, 'auth': True, 'error': [], 'rename_files': rnm_files})
+            self.sendMessage(data, sync=True)
+
+    def __CREN(self, data):
+        msg_dlg = MsgDlg(None, "Перемеинование завершено успешно!")
+        msg_dlg.ShowModal()
+        evt = UpdateFileListCtrlEvent()
+        wx.PostEvent(self.gui, evt)
 
     def onUpdateListCtrl(self, event):
         self.gui.FileManager.files_folder.showFilesInDirectory(self.gui.FileManager.files_folder.currentDir)
