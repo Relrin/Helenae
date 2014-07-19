@@ -22,12 +22,11 @@ ID_FOLDER = 151
 ID_RENAME = 152
 ID_REPLACE = 153
 ID_REMOVE = 154
-ID_SYNC = 155
-ID_SHOW_STATUSBAR = 156
-ID_OPTIONS = 157
-ID_WRITE = 158
-ID_COPY_FILE = 159
-ID_COPY_FOLDER = 160
+ID_SHOW_STATUSBAR = 155
+ID_OPTIONS = 156
+ID_WRITE = 157
+ID_COPY_FILE = 158
+ID_COPY_FOLDER = 159
 ID_EXIT = 200
 ID_SPLITTER = 300
 ID_TOOLBAR_UPDIR = 201
@@ -69,8 +68,6 @@ class FileManager(wx.Frame):
         writeItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/write.png'))
         deleteItem = wx.MenuItem(filemenu, ID_REMOVE, "&Удалить", help='Удалить выделенные файлы')
         deleteItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/delete.png'))
-        syncItem = wx.MenuItem(filemenu, ID_SYNC, "&Синхронизация", help='Синхронизировать выделенные файлы')
-        syncItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/sync.png'))
         filemenu.AppendItem(newItem)
         filemenu.AppendItem(createItem)
         filemenu.AppendSeparator()
@@ -81,7 +78,6 @@ class FileManager(wx.Frame):
         filemenu.AppendItem(removeItem)
         filemenu.AppendItem(writeItem)
         filemenu.AppendItem(deleteItem)
-        filemenu.AppendItem(syncItem)
         filemenu.AppendSeparator()
         exitItem = wx.MenuItem(filemenu, ID_EXIT, "&Выход", help='Выход из приложения')
         exitItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/exit.png'))
