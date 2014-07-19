@@ -26,10 +26,6 @@ class ValidatorMsgDialog(wx.Dialog):
             txt.SetFont(wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
             string += word + ' '
 
-        # info icon
-        bitmap = wx.Bitmap('../helenae/gui/icons/ui/info.png', type=wx.BITMAP_TYPE_PNG)
-        self.info_icon = wx.StaticBitmap(self, id=ID_MSG_DLG_ICO, bitmap=bitmap, pos=(15, 25))
-
         # form settings
         size = (300, 150)
         self.SetSize(size)

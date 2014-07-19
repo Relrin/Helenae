@@ -88,7 +88,7 @@ class FileListCtrl(wx.ListCtrl):
             directory += '/'
 
         # all founded folders append first
-        directories = [f for f in os.listdir(directory) if os.path.isdir(directory+f)]
+        directories = [f for f in os.listdir(directory) if os.path.exists(directory+f) and os.path.isdir(directory+f)]
         directories.sort()
 
         for i in directories:

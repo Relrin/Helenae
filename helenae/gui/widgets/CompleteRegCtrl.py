@@ -17,10 +17,6 @@ class CompleteRegCtrl(wx.Frame):
         self.txt = wx.StaticText(self, id=ID_LABLE_TEXT_INFO, label="можете авторизироваться", pos=(85, 40))
         self.txt.SetFont(wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
 
-        # info icon
-        bitmap = wx.Bitmap(ico_folder + '/icons/ui/info.png', type=wx.BITMAP_TYPE_PNG)
-        self.info_icon = wx.StaticBitmap(self, id=ID_ICON_INFO, bitmap=bitmap, pos=(15, 25))
-
         # buttons
         self.cancel_button = wx.Button(self, id=ID_BUTTON_CLOSE_MSG, label='Закрыть', pos=(225, 115))
 
