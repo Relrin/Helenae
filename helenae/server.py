@@ -130,14 +130,17 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['FSRV'] = self.fileserver_auth
         handlers['AUTH'] = self.authorization
         handlers['READ'] = self.read_fs
-        handlers['REAF'] = self.read_fs_all
         handlers['WRTE'] = self.write_file
         handlers['DELT'] = self.delete_file
         handlers['RNME'] = self.rename_file
         handlers['SYNC'] = self.fileSync
         handlers['LIST'] = self.get_fs_structure
+        # for gui app
+        handlers['REAF'] = self.read_fs_all
         handlers['GETF'] = self.get_all_user_files
         handlers['WRTF'] = self.massive_write_files
+        handlers['DELF'] = self.massive_delete_files
+        handlers['RENF'] = self.massive_rename_files
         return handlers
 
     def registration(self, data):
@@ -504,6 +507,10 @@ class DFSServerProtocol(WebSocketServerProtocol):
         return data
 
     def massive_write_files(self, data):
+        """
+            Massive write files to file storage.
+            If file already exists, then synchronize with him.
+        """
         try:
             log.msg('[WRTF] Massive write files for User=%s' % (data['user']))
             files_lst = []
@@ -525,7 +532,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                         fileserver = session.query(FileServer).filter_by(ip=server_ip, port=port).first()
                         cnt_files = session.execute(func.count(FileTable.id)).fetchone()[0] + 1
                         # processing data
-                        filename, type_file = name.split('.')
+                        filename, type_file = os.path.splitext(name)
                         file_id = str(cnt_files).rjust(24-len(type_file), '0') + '.' + type_file
                         # write record into DB
                         new_file = FileTable(name, file_id, file_hash_new, file_path, size, 0, catalog.id)
@@ -554,6 +561,66 @@ class DFSServerProtocol(WebSocketServerProtocol):
             log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
         finally:
             session.close()
+        return data
+
+    def massive_delete_files(self, data):
+        """
+            Massive delete files from file storage
+        """
+        try:
+            del_files = []
+            log.msg('[DELF] Delete data for User=%s' % (data['user']))
+            session = self.__create_session()
+            user_db = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user'])).fetchone()
+            user_id = 'u' + str(user_db.id).rjust(14, '0')
+            for name, path, file_hash, size in data['deleted_files']:
+                file_servers = []
+                file_path = path.replace(data['default_dir'] , '')
+                user_file = session.query(FileTable).filter_by(original_name=name, user_path=file_path, file_hash=file_hash).first()
+                if user_file is not None:
+                    servers = user_file.server_id[:]
+                    for server in servers:
+                        user_file.server_id.remove(server)
+                        file_servers.append((server.ip, server.port))
+                    del_files.append(('DELET_FILE', name, path, user_file.server_name, file_servers))
+                    session.delete(user_file)
+            session.commit()
+            data['cmd'] = 'CDLT'
+            data['user_id'] = user_id
+            data['deleted_files'] = del_files
+            log.msg('[DELF] Delete data for User=%s has complete!' % (data['user']))
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+        return data
+
+    def massive_rename_files(self, data):
+        """
+            Rename one file on massive filepaths in folder
+        """
+        try:
+            log.msg('[RENF] Rename files for User=%s' % (data['user']))
+            session = self.__create_session()
+            for name, path, file_hash, new_filename, new_file_path in data['rename_files']:
+                user_file = session.query(FileTable).filter_by(original_name=name, user_path=path, file_hash=file_hash).first()
+                if user_file is not None:
+                    if name != new_filename:
+                        user_file.original_name = new_filename
+                    if path != new_file_path:
+                        user_file.user_path = new_file_path
+                    session.commit()
+            data['cmd'] = 'CREN'
+            log.msg('[RENF] Rename files for User=%s has complete!' % (data['user']))
+        except sqlalchemy.exc.ArgumentError:
+            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
+        except sqlalchemy.exc.CompileError:
+            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
+        finally:
+            session.close()
+        del data['rename_files']
         return data
 
     def onMessage(self, payload, isBinary):
