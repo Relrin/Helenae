@@ -533,7 +533,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                         cnt_files = session.execute(func.count(FileTable.id)).fetchone()[0] + 1
                         # processing data
                         filename, type_file = os.path.splitext(name)
-                        file_id = str(cnt_files).rjust(24-len(type_file), '0') + '.' + type_file
+                        file_id = str(cnt_files).rjust(24-len(type_file), '0') + type_file
                         # write record into DB
                         new_file = FileTable(name, file_id, file_hash_new, file_path, size, 0, catalog.id)
                         new_file.server_id.append(fileserver)
@@ -612,7 +612,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                     if path != new_file_path:
                         user_file.user_path = new_file_path
                     session.commit()
-            data['cmd'] = 'CREN'
+            data['cmd'] = 'CREN' if data['cmd'] == 'RENF' else 'CREP'
             log.msg('[RENF] Rename files for User=%s has complete!' % (data['user']))
         except sqlalchemy.exc.ArgumentError:
             log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
