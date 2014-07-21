@@ -21,7 +21,8 @@ from utils import commands
 from utils.crypto.md5 import md5_for_file
 from utils.wx.CustomEvents import UpdateFileListCtrlEvent, EVT_UPDATE_FILE_LIST_CTRL
 from gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
-from gui.widgets.Filemanager import ID_BUTTON_WRITE, ID_WRITE, ID_BUTTON_REMOVE_FILE, ID_REMOVE, ID_BUTTON_RENAME, ID_RENAME
+from gui.widgets.Filemanager import ID_BUTTON_WRITE, ID_WRITE, ID_BUTTON_REMOVE_FILE, ID_REMOVE, \
+    ID_BUTTON_RENAME, ID_RENAME, ID_BUTTON_TRANSFER, ID_REPLACE
 from gui.widgets.RegisterCtrl import ID_BUTTON_REG
 from gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
 from gui.widgets.InputDialogCtrl import InputDialog
@@ -48,6 +49,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         handlers['WRTE'] = self.__WRTE
         handlers['DELT'] = self.__DELT
         handlers['RENF'] = self.__RENF
+        handlers['REPF'] = self.__REPF
         # continues operations...
         handlers['RAUT'] = self.__RAUT
         handlers['RREG'] = self.__RREG
@@ -55,6 +57,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         handlers['CWRT'] = self.__CWRT
         handlers['CDLT'] = self.__CDLT
         handlers['CREN'] = self.__CREN
+        handlers['CREP'] = self.__CREP
         return handlers
 
     def initBindings(self):
@@ -62,12 +65,18 @@ class GUIClientProtocol(WebSocketClientProtocol):
         self.gui.RegisterWindow.Bind(wx.EVT_BUTTON, self.__StartRegistration, id=ID_BUTTON_REG)
         self.gui.Bind(wx.EVT_BUTTON, self.onEndRegister, id=ID_BUTTON_CLOSE_MSG)
         self.gui.Bind(EVT_UPDATE_FILE_LIST_CTRL, self.onUpdateListCtrl)
+        # write files/folder
         self.gui.Bind(wx.EVT_BUTTON, self.__WRTE, id=ID_BUTTON_WRITE)
         self.gui.Bind(wx.EVT_MENU, self.__WRTE, id=ID_WRITE)
+        # delete file/folder
         self.gui.Bind(wx.EVT_BUTTON, self.__DELT, id=ID_BUTTON_REMOVE_FILE)
         self.gui.Bind(wx.EVT_MENU, self.__DELT, id=ID_REMOVE)
+        # rename file/folder
         self.gui.Bind(wx.EVT_BUTTON, self.__RENF, id=ID_BUTTON_RENAME)
         self.gui.Bind(wx.EVT_MENU, self.__RENF, id=ID_RENAME)
+        # replace file/folder
+        self.gui.Bind(wx.EVT_BUTTON, self.__REPF, id=ID_BUTTON_TRANSFER)
+        self.gui.Bind(wx.EVT_MENU, self.__REPF, id=ID_REPLACE)
 
     def __SendInfoToFileServer(self, json_path, ip, port):
         p = Popen(["python", "./fileserver_client.py", str(json_path), str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
@@ -334,7 +343,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
             rnm_files = []
             currentDir = self.gui.FileManager.files_folder.currentDir
             defaultDir = self.gui.FileManager.files_folder.defaultDir
-            dlg = InputDialog(self.gui, -1, "Введите новое имя файла или каталога", "./gui", RenameValidator())
+            dlg = InputDialog(self.gui, -1, "Введите новое имя файла или каталога", self.gui.FileManager.ico_folder, RenameValidator())
             dlg.ShowModal()
             if dlg.result is not None:
                 file_path = currentDir + selectedItems[0]
@@ -370,12 +379,73 @@ class GUIClientProtocol(WebSocketClientProtocol):
                             full_new_folder = full_new_folder.replace(defaultDir, '')
                             full_old_folder = old_folder.replace(defaultDir, '') + '/'
                             rnm_files.append((filename, full_old_folder, file_hash, filename, full_new_folder))
-                    shutil.move(file_path, new_folder_path)
+                    os.rename(file_path, new_folder_path)
             data = dumps({'cmd': 'RENF', 'user': self.login, 'auth': True, 'error': [], 'rename_files': rnm_files})
             self.sendMessage(data, sync=True)
 
     def __CREN(self, data):
         msg_dlg = MsgDlg(None, "Перемеинование завершено успешно!")
+        msg_dlg.ShowModal()
+        evt = UpdateFileListCtrlEvent()
+        wx.PostEvent(self.gui, evt)
+
+    def __REPF(self, event):
+        """
+            Replace files/folder to another folder
+        """
+        currentDir = self.gui.FileManager.files_folder.currentDir
+        defaultDir = self.gui.FileManager.files_folder.defaultDir
+        selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
+        if len(selectedItems) == 0:
+            wx.MessageBox("Для переноса надо выбрать минимум один файл или каталог!", "Сообщение")
+        else:
+            dlg = wx.DirDialog(self.gui, "Выберите каталог:", style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+            if dlg.ShowModal() == wx.ID_OK:
+                # move files to another folder at user disk
+                replaceToFolder = os.path.normpath(dlg.GetPath()) + '/'
+                if defaultDir not in replaceToFolder:
+                    for item in selectedItems:
+                        path_to_file = currentDir + item
+                        path_to_file_new = replaceToFolder + item
+                        shutil.move(path_to_file, path_to_file_new)
+                    self.__CREP(None)
+                # move files inside user's folder
+                else:
+                    rnm_files = []
+                    for item in selectedItems:
+                        path_to_file = currentDir + item
+                        path_to_file_new = replaceToFolder + item
+                        if os.path.isfile(path_to_file):
+                            path, file = os.path.split(path_to_file)
+                            file_hash, size = md5_for_file(path_to_file)
+                            file_name_part = os.path.splitext(file)
+                            new_filename = ''.join(file_name_part)
+                            path = currentDir.replace(defaultDir, '')
+                            new_path = replaceToFolder.replace(defaultDir, '')
+                            rnm_files.append((file, path, file_hash, new_filename, new_path))
+                            shutil.move(path_to_file, path_to_file_new)
+                        elif os.path.isdir(path_to_file):
+                            file_path = path_to_file + '/'
+                            file_path_lst = filter(lambda item: item != '', file_path.split('/'))
+                            new_folder_lst = filter(lambda item: item != '', path_to_file_new.split('/'))
+                            new_folder_path = '/' + '/'.join(new_folder_lst) + '/'
+                            for root, subdir, files in os.walk(file_path):
+                                for filename in files:
+                                    file_in_folder_path = os.path.join(root, filename)
+                                    file_hash, size = md5_for_file(file_in_folder_path)
+                                    old_folder, name = os.path.split(file_in_folder_path)
+                                    new_folder_lst = filter(lambda item: item != '', path_to_file_new.split('/'))
+                                    full_new_folder = '/' + '/'.join(new_folder_lst) + '/'
+                                    full_new_folder = full_new_folder.replace(defaultDir, '')
+                                    full_old_folder = old_folder.replace(defaultDir, '') + '/'
+                                    rnm_files.append((filename, full_old_folder, file_hash, filename, full_new_folder))
+                                    os.rename(file_path, new_folder_path)
+                    data = dumps({'cmd': 'RENF', 'user': self.login, 'auth': True, 'error': [], 'rename_files': rnm_files})
+                    self.sendMessage(data, sync=True)
+            dlg.Destroy()
+
+    def __CREP(self, data):
+        msg_dlg = MsgDlg(None, "Процедура переноса успешно завершена!")
         msg_dlg.ShowModal()
         evt = UpdateFileListCtrlEvent()
         wx.PostEvent(self.gui, evt)
