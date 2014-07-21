@@ -225,7 +225,7 @@ class MessageBasedServerProtocol(WebSocketServerProtocol):
         """
         user_id, cmd, file_id, self.file_enc_psw = payload[:87].replace('[', '').replace(']', '').split(':')
         self.file_enc_psw = self.file_enc_psw.replace('~', '')
-        data = payload[87:]
+        data = payload[86:]
         operation, status, commentary = "UNK", "C", "Successfull!"
         if cmd in ('WRITE_FILE', 'READU_FILE', 'DELET_FILE', 'STATUS_SRV', 'RSYNC_FILE', 'WSYNC_FILE'):
             operation, status, commentary = self.commands_handlers[cmd](user_id, file_id, data)
