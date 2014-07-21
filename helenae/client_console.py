@@ -457,7 +457,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Print available commands into console
         """
         print "Available commands:"
-        for cmd in filter(lambda command: command not in ("REAF", "GETF", "WRTF", "DELF"), sorted(self.commands.keys())):
+        for cmd in filter(lambda command: command not in ("REAF", "GETF", "WRTF", "DELF", "RENF", "REPF"), sorted(self.commands.keys())):
             print "\t%s \t %s" % (cmd, self.commands[cmd])
 
     def inputData(self):
