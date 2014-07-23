@@ -1,7 +1,340 @@
-<html>
-    <body>
-        <div>
-            <a href="{{ url_for('admin.index') }}">Go to admin!</a>
-        </div>
-    </body>
-</html>
+{% extends "base.html" %}
+{% block body %}
+  <body class="index" id="to-top">
+
+    <!-- Side nav -->
+    <nav class="side-nav" role="navigation">
+
+      <ul class="nav-side-nav">
+        <li><a class="tooltip-side-nav" href="#section-1" title="" data-original-title="Сервис" data-placement="left"></a></li>
+        <li><a class="tooltip-side-nav" href="#section-2" title="" data-original-title="Особенности" data-placement="left"></a></li>
+        <li><a class="tooltip-side-nav" href="#section-3" title="" data-original-title="Подписка" data-placement="left"></a></li>
+        <li><a class="tooltip-side-nav" href="#to-top" title="" data-original-title="Начало" data-placement="left"></a></li>
+      </ul>
+      
+    </nav> <!-- /.side-nav -->
+
+
+
+
+    <!-- Jumbotron -->
+    <header class="jumbotron" role="banner">
+
+      <div class="container">
+
+        <div class="row">
+
+          <div class="col-md-7">
+
+            <!-- Logo -->
+            <figure class="text-center">
+              <a href="">
+                <img class="img-logo" src="images/logo.png" alt="">
+              </a>
+            </figure> <!-- /.text-center -->
+
+            <!-- Title -->
+            <h1>Cloud storage</h1>
+
+            <!-- Sub title -->
+            <p>Это сервис для хранения ваших файлов и работы с ними на любом устройстве, подключенном к интернету.</p>
+
+            <!-- Button -->
+            <p class="btn-app-store">
+              <a class="btn btn-download btn-lg" href="#fakelinks">
+                <img src="images/btn-app-store.png" alt="">
+              </a>
+              <a class="btn btn-download btn-lg" href="#fakelinks">
+                <img src="images/btn-google-play.png" alt="">
+              </a>
+            </p> <!-- /.btn-app-store -->
+
+          </div> <!-- /.col-md-7 -->
+
+          <div class="col-md-5">
+
+            <!-- Images showcase -->
+            <figure>
+              <img class="img-iPhone" src="images/preview/1.png" alt="">
+            </figure>
+
+          </div> <!-- /.col-md-5 -->
+          
+        </div> <!-- /.row -->
+        
+      </div> <!-- /.container -->
+
+    </header> <!-- /.jumbotron -->
+
+
+
+
+    <!-- Services -->
+    <section class="services-section" id="section-1">
+
+      <div class="container">
+
+        <div class="row">
+
+          <div class="col-md-4 col-services">
+            
+            <!-- Icons -->
+            <figure>
+              <img class="img-services" src="images/icons/storage.png" alt="">
+            </figure>
+
+            <!-- Title -->
+            <h4>Храните</h4>
+
+            <!-- Description -->
+            <p>Памятные фотографии и важные документы не пропадут вместе с компьютером. А места для них всегда хватит.</p>
+
+          </div> <!-- /.col-md-4 -->
+
+          <div class="col-md-4 col-services">
+            
+            <!-- Icons -->
+            <figure>
+              <img class="img-services" src="images/icons/share.png" alt="">
+            </figure>
+
+            <!-- Title -->
+            <h4>Обменивайтесь</h4>
+
+            <!-- Description -->
+            <p>Хотите поделиться видео или аудио? Зайдите в приложение и просто создайте ссылку на файл для вашего друга или коллеги!</p>
+
+          </div> <!-- /.col-md-4 -->
+
+          <div class="col-md-4 col-services">
+            
+            <!-- Icons -->
+            <figure>
+              <img class="img-services img-margin" src="images/icons/anywhere.png" alt="">
+            </figure>
+
+            <!-- Title -->
+            <h4>Пользуйтесь</h4>
+
+            <!-- Description -->
+            <p>Информация всегда с вами — в любой точке мира и на любом устройстве, подключенном к интернету.</p>
+
+          </div> <!-- /.col-md-4 -->
+          
+        </div> <!-- /.row -->
+        
+      </div> <!-- /.container -->
+      
+    </section> <!-- /.services-section -->
+
+
+
+
+    <!-- Features -->
+    <section class="features-section" id="section-2">
+
+      <div class="container">
+
+        <div class="row">
+
+          <div class="col-md-5 col-features text-center">
+            
+            <!-- Images showcase -->
+            <figure>
+              <img class="img-iPhone" src="images/preview/2.png" alt="">
+            </figure>
+
+          </div> <!-- /.col-md-5 -->
+
+          <div class="col-md-7 col-features features-content">
+            
+            <!-- Title -->
+            <h3 id="title-1">Где бы вы ни были</h3>
+
+            <!-- Description -->
+            <p>Доверьте ваши документы Cloud storage и вы сможете воспользоваться ими со всех ваших компьютеров, телефонов или планшетов. Редактируйте документы, автоматически загружайте фото и делитесь вашими видео откуда угодно!</p>
+
+          </div> <!-- /.col-md-7 -->
+          
+        </div> <!-- /.row -->
+
+
+
+
+        <div class="row media-screen-800">
+
+          <div class="col-md-7 col-features features-content">
+            
+            <!-- Title -->
+            <h3 id="title-2">Делитесь с уверенностью</h3>
+
+            <!-- Description -->
+            <p>Делитесь фото с друзьями. Работайте вместе с участниками вашей рабочей группы, как будто вы сидите за одним и тем же компьютером. Все файлы автоматически доступны только вам, так что вы можете полностью контролировать, кто видит какой файл.</p>
+
+            <p>
+              <a class="btn btn-danger" href="./sign-up">Зарегистрироваться</a>
+              <a class="btn btn-danger-border" href="./sign-in">Войти</a>
+            </p>
+
+          </div> <!-- /.col-md-7 -->
+
+          <div class="col-md-5 col-features text-center">
+            
+            <!-- Images showcase -->
+            <figure>
+              <img class="img-iPhone margin-top margin-screen-800" src="images/preview/3.png" alt="">
+            </figure>
+
+          </div> <!-- /.col-md-5 -->
+          
+        </div> <!-- /.row -->
+
+
+
+
+        <div class="row">
+
+          <div class="col-md-5 col-features text-center">
+            
+            <!-- Images showcase -->
+            <figure>
+              <img class="img-iPhone margin-top margin-top-115" src="images/preview/4.png" alt="">
+            </figure>
+
+          </div> <!-- /.col-md-5 -->
+
+          <div class="col-md-7 col-features features-content">
+            
+            <!-- Title -->
+            <h3 id="title-3">Совершенно безопасно</h3>
+
+            <!-- Description -->
+            <p>Даже если ваш телефон будет утерян, ваши документы будут в безопасности в Cloud storage и вы всегда сможете с легкостью восстановить их. Наше приложение обеспечивает безопасность документов с помощью шифрования файлов алгоритмами AES-256, Serpent, Twofish и функции двухэтапной проверки личности.</p>
+
+            <!-- Button -->
+            <p class="btn-app-store">
+              <a class="btn btn-danger btn-lg" href="#fakelinks">
+                <img src="images/btn-desktop-app.png" alt="">
+              </a>
+            </p> <!-- /.btn-app-store -->
+
+
+          </div> <!-- /.col-md-7 -->
+          
+        </div> <!-- /.row -->
+
+      </div> <!-- /.container -->
+
+    </section> <!-- /.features-section -->
+
+
+
+
+    <!-- Subscribe -->
+    <section class="subscribe-section" id="section-3">
+
+      <div class="container">
+
+        <div class="row">
+
+          <div class="col-md-12">
+
+            <!-- Title -->
+            <h2>Подписаться на обновления приложения</h2>
+
+            <!-- Subscribe form -->
+            <div class="row">
+
+              <div class="col-md-6 col-md-offset-3 col-subscribe">
+
+                <form class="subscribe-form form-inline" action="./" role="form">
+
+                  <!-- Input -->
+                  <div class="form-group">
+
+                    <label class="sr-only" for="exampleInputEmail1">Email адрес</label>
+                    <input type="email" class="form-control" id="exampleInputEmail1" placeholder="Введите email">
+
+                  </div> <!-- /.form-group -->
+
+                  <!-- Button -->
+                  <button class="btn btn-success" type="submit">Сохранить</button>
+                  
+                </form> <!-- /.subscribe-form -->
+
+                <section class="subscribe-description">
+
+                  <p>Не беспокойтесь. Мы не рассылаем спам :)</p>
+                  
+                </section> <!-- /.subscribe-description -->
+                
+              </div> <!-- /.col-md-6 -->
+
+            </div> <!-- /.row -->
+            
+          </div> <!-- /.col-md-12 -->
+          
+        </div> <!-- /.row -->
+
+      </div> <!-- /.container -->
+
+    </section> <!-- /.subscribe-section -->
+
+
+
+
+    <!-- Footer -->
+    <footer class="footer-section" role="contentinfo">
+
+      <div class="container">
+
+        <div class="row">
+
+          <div class="col-md-4 col-footer">
+            
+            <!-- Footer 1 -->
+            <section>
+              <p>Веб-дизайнер: Aryandhani</p>
+            </section>
+
+          </div> <!-- /.col-md-4 -->
+
+          <div class="col-md-4 col-footer col-padding">
+            
+            <!-- Footer 1 -->
+            <section class="text-center">
+              <p>Ознакомтесь с нашими <a href="#fakelinks">правилами</a></p>
+            </section>
+
+            <!-- Social media links -->
+            <ul class="social-media-links">
+
+              <li><a class="fa fa-twitter tw" href="#fakelinks"></a></li>
+              <li><a class="fa fa-facebook fb" href="#fakelinks"></a></li>
+              <li><a class="fa fa-pinterest pn" href="#fakelinks"></a></li>
+              
+            </ul> <!-- /.social-media-links -->
+
+          </div> <!-- /.col-md-4 -->
+
+          <div class="col-md-4 col-footer">
+            
+            <!-- Footer 1 -->
+            <section>
+              <p><strong>Все права защищены</strong><br>Cloud storage 2014-2015</p>
+            </section>
+
+          </div> <!-- /.col-md-4 -->
+          
+        </div> <!-- /.row -->
+
+      </div> <!-- /.container -->
+
+    </footer> <!-- /.footer-section -->
+
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="javascript/vendor/jquery-2.1.0.min.js"></script>
+    <script src="javascript/bootstrap.min.js"></script>
+    <script src="javascript/assets/application.js"></script>
+  </body>
+{% endblock %}

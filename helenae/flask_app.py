@@ -19,3 +19,8 @@ def get_locale():
 
 import web.admin
 import web.views
+
+if __name__ == "__main__":
+    from web.admin import *
+    from web.views import *
+    app.run(port=8000, debug=True)

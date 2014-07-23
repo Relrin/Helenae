@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block body %}
+  <body class="sign-in-up" id="to-top">
+
+    <!-- Sign In/Sign Up section -->
+    <section class="sign-in-up-section">
+
+      <div class="container">
+
+        <div class="row">
+
+          <div class="col-md-12">
+
+            <!-- Logo -->
+            <figure class="text-center">
+              <a href="../">
+                <img class="img-logo" src="images/logo.png" alt="">
+              </a>
+            </figure> <!-- /.text-center -->
+            
+          </div> <!-- /.col-md-12 -->
+
+        </div> <!-- /.row -->
+
+      </div>
+
+   </section>
+
+    <div class="container">
+
+        <div class="row">
+
+            <div class="col-md-12">
+
+                <section class="text-center" style="color:white">
+                    Регистрация успешно завершена! Теперь Вы будете автоматически перенесы на главную страницу через 5 секунд.<br>
+                    Если Ваш браузер не поддерживает перенаправление нажмите <a href="../">здесь</a>.
+
+                    <script language="javascript">
+                        function Redirect()
+                        {
+                            window.location="../";
+                        }
+                        setTimeout('Redirect()', 5000);
+                    </script>
+
+                </section>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="javascript/vendor/jquery-2.1.0.min.js"></script>
+    <script src="javascript/bootstrap.min.js"></script>
+    <script src="javascript/assets/application.js"></script>
+{% endblock %}

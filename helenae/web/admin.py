@@ -4,7 +4,7 @@ from flask_app import app, db_connection, dbTables
 from flask.ext import admin, login
 from flask.ext.admin import helpers, expose
 from flask.ext.admin.contrib import sqla
-from forms import LoginForm
+from forms import LoginForm, get_user
 
 # initialize flask-login
 def init_login():
@@ -15,6 +15,7 @@ def init_login():
     @login_manager.user_loader
     def load_user(user_id):
         return db_connection.session.query(dbTables.Users).get(user_id)
+
 
 # customized index view class that handles login
 class CustomAdminIndexView(admin.AdminIndexView):
@@ -39,7 +40,7 @@ class CustomAdminIndexView(admin.AdminIndexView):
 
         form = LoginForm(request.form)
         if helpers.validate_form_on_submit(form):
-            user = form.get_user()
+            user = get_user(form.login.data)
             login.login_user(user)
 
         if login.current_user.is_authenticated():
