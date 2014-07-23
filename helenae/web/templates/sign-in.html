@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block body %}
+  <body class="sign-in-up" id="to-top">
+
+    <!-- Sign In/Sign Up section -->
+    <section class="sign-in-up-section">
+
+      <div class="container">
+
+        <div class="row">
+
+          <div class="col-md-12">
+
+            <!-- Logo -->
+            <figure class="text-center">
+              <a href="../">
+                <img class="img-logo" src="images/logo.png" alt="">
+              </a>
+            </figure> <!-- /.text-center -->
+            
+          </div> <!-- /.col-md-12 -->
+
+        </div> <!-- /.row -->
+
+
+
+
+        <section class="sign-in-up-content">
+
+          <div class="row">
+
+            <div class="col-md-12">
+
+              <h4 class="text-center">Аутентификация</h4>
+
+              <form class="sign-in-up-form" action="./sign-in" role="form">
+                
+                <!-- Input 1 -->
+                <div class="form-group">
+                  <input class="form-control" id="InputLogin" type="email" placeholder="Логин">
+                </div> 
+                <!-- /.form-group -->
+
+                <!-- Input 2 -->
+                <div class="form-group">
+                  <input class="form-control" id="InputPassword" type="password" placeholder="Пароль">
+                </div> 
+                <!-- /.form-group -->
+
+                <!-- Button -->
+                <button class="btn btn-success btn-block" type="submit">Войти</button><br>
+
+                <!-- Sign In/Sign Up links -->
+                <section class="text-center sign-in-up-links text-center">
+                  <br><p><a href="../forgot-password">Забыли пароль?</a> <span class="sep">&ndash;</span> <a href="../sign-up">Нужен новый аккаунт?</a></p>
+                </section> <!-- /.sign-in-up-links -->
+                
+              </form> <!-- /.sign-in-up-form -->
+              
+            </div> <!-- /.col-md-12 -->
+
+          </div> <!-- /.row -->
+          
+        </section> <!-- /.sign-in-up-content -->
+
+
+
+
+        <div class="row">
+
+          <div class="col-md-12">
+
+            <section class="footer-copyright text-center">
+
+              <p>Веб-дизайнер: Aryandhani</p>
+              
+            </section> <!-- /.footer-section -->
+            
+          </div> <!-- /.col-md-12 -->
+
+        </div> <!-- /.row -->
+        
+      </div> <!-- /.container -->
+
+    </section> <!-- /.sign-in-up-section -->
+    
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="javascript/vendor/jquery-2.1.0.min.js"></script>
+    <script src="javascript/bootstrap.min.js"></script>
+    <script src="javascript/assets/application.js"></script>
+{% endblock %}
