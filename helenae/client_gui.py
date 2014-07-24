@@ -17,7 +17,7 @@ wxreactor.install()
 from twisted.internet import reactor, ssl, threads
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
-from utils import commands
+from utils.jsonConstructor import constructDataClient
 from utils.crypto.md5 import md5_for_file
 from utils.wx.CustomEvents import UpdateFileListCtrlEvent, EVT_UPDATE_FILE_LIST_CTRL
 from gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
@@ -92,7 +92,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
             self.gui.PreloaderPlay()
             login = self.gui.login_input.GetValue().strip()
             password = self.gui.pass_input.GetValue().strip()
-            data = commands.constructDataClient('AUTH', login, password, False)
+            data = constructDataClient('AUTH', login, password, False)
             self.sendMessage(data, sync=True)
 
     def __StartRegistration(self, event):
@@ -302,9 +302,9 @@ class GUIClientProtocol(WebSocketClientProtocol):
                     dump(dict_json, f)
                 self.__SendInfoToFileServer(json_file, server_ip, server_port)
                 try:
-                    if os.path.isfile(src_file):
+                    if os.path.exists(src_file) and os.path.isfile(src_file):
                         os.remove(src_file)
-                    if os.path.isdir(path):
+                    if os.path.exists(path) and os.path.isdir(path):
                         root_dir = self.gui.FileManager.files_folder.defaultDir
                         fileInFolder = len(os.walk(path).next()[2])
                         if fileInFolder == 0:
