@@ -46,7 +46,7 @@ def checkServerStatus(ip, port):
 
 class DFSServerProtocol(WebSocketServerProtocol):
 
-    commands = commands.commands_user
+    commands = commands.commands_server
 
     def __init__(self):
         # initialize sessionmaker, which get access to work with DB
@@ -241,7 +241,23 @@ class DFSServerProtocol(WebSocketServerProtocol):
             session = self.__create_session()
             result = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user']))
             result = result.fetchone()
-            data, result_msg = commands.AUTH(result, data)
+            result_msg = "[AUTH] User=%s successfully logged..." % data['user']
+            # user not found at DB
+            if result is None:
+                data['cmd'] = 'RAUT'
+                data['error'].append('\nWARNING: User not found')
+                result_msg = "[AUTH] User=%s not found" % data['user']
+            else:
+                if result['name'] == data['user']:
+                    # correct users info --> real user
+                    hash_psw = str(sha256(data['password']+str(result['id'])).hexdigest())
+                    if result['password'] == str(hash_psw):
+                        data['auth'] = True
+                    # incorrect password --> fake user
+                    else:
+                        data['cmd'] = 'RAUT'
+                        data['error'].append('\nERROR: Incorrect password. Try again...')
+                        result_msg = "[AUTH] Incorrect password for user=%s" % data['user']
             log.msg(result_msg)
         except sqlalchemy.exc.ArgumentError:
             log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
@@ -284,9 +300,9 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 user_path, original_filename = os.path.split(data['file_path'])
                 if not data['gui']:
                     user_path = u''
-                filename, type_file = original_filename.split('.')
+                filename, type_file = os.path.splitext(original_filename)
                 user_id = 'u' + str(user_db.id).rjust(14, '0')
-                file_id = str(cnt_files).rjust(24-len(type_file), '0') + '.' + type_file
+                file_id = str(cnt_files).rjust(25-len(type_file), '0') + type_file
                 data['server'] = server
                 data['json'] = ('WRITE_FILE', user_id, file_id, data['file_path'])
                 # write record into DB
@@ -533,7 +549,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                         cnt_files = session.execute(func.count(FileTable.id)).fetchone()[0] + 1
                         # processing data
                         filename, type_file = os.path.splitext(name)
-                        file_id = str(cnt_files).rjust(24-len(type_file), '0') + type_file
+                        file_id = str(cnt_files).rjust(25-len(type_file), '0') + type_file
                         # write record into DB
                         new_file = FileTable(name, file_id, file_hash_new, file_path, size, 0, catalog.id)
                         new_file.server_id.append(fileserver)
@@ -646,7 +662,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                     json_data = self.commands_handlers['REGS'](json_data)
             # for authorized users
             else:
-                if json_cmd in commands.commands_user.keys():
+                if json_cmd in commands.commands_server.keys():
                     if self.commands_handlers[json_cmd] is not None:
                         json_data = self.commands_handlers[json_cmd](json_data)
                     # just send error if not realized

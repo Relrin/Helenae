@@ -13,6 +13,8 @@ from twisted.internet import reactor, ssl
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
 from utils import commands
+from utils.jsonConstructor import constructDataClient
+from utils.convertSize import convertSize
 from utils.crypto.md5 import md5_for_file
 
 # TODO: Create plugins for future commands
@@ -96,7 +98,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         self.__clearCashe()
         self.counterAttemptsLogin = 3
         login, password = self.inputData()
-        data = commands.constructDataClient('AUTH', login, password, False)
+        data = constructDataClient('AUTH', login, password, False)
         return data
 
     def __WRTE(self, data):
@@ -109,7 +111,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print 'Please, enter correct path to your FILE'
             file_path = unicode(raw_input('Path:'))
         file_hash, file_size = md5_for_file(file_path)
-        data = commands.constructDataClient('WRTE', data['user'], data['password'], True,
+        data = constructDataClient('WRTE', data['user'], data['password'], True,
                                             file_path=file_path, file_size=file_size, file_hash=file_hash,
                                             gui=False)
         return data
@@ -139,7 +141,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
             Processing for LIST command
         """
-        data = commands.constructDataClient('LIST', data['user'], data['password'], True)
+        data = constructDataClient('LIST', data['user'], data['password'], True)
         self.__clearCashe()
         return data
 
@@ -165,7 +167,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Processing for READ command (read some file from FS)
         """
         if self.__files is None:
-            data = commands.constructDataClient('AUTH', data['user'], data['password'], True,
+            data = constructDataClient('AUTH', data['user'], data['password'], True,
                                                 "WARNING: Please, use LIST to get last cashe of your files from server...")
         else:
             self.__filenumber = ''
@@ -176,7 +178,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 self.__filenumber = self.inputFileNumber()
             self.__filenumber = int(self.__filenumber) - 1
             file_hash = self.__files[self.__filenumber].file_hash
-            data = commands.constructDataClient('READ', data['user'], data['password'], True,
+            data = constructDataClient('READ', data['user'], data['password'], True,
                                                 file_path='', file_size=0, file_hash=file_hash)
         return data
 
@@ -227,7 +229,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Processing for DELT command
         """
         if self.__files is None:
-            data = commands.constructDataClient('AUTH', data['user'], data['password'], True,
+            data = constructDataClient('AUTH', data['user'], data['password'], True,
                                                 "WARNING: Please, use LIST to get last cashe of your files from server...")
         else:
             self.__filenumber = ''
@@ -239,7 +241,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             self.__filenumber = int(self.__filenumber) - 1
             file_id = self.__files[self.__filenumber].id
             file_hash = self.__files[self.__filenumber].file_hash
-            data = commands.constructDataClient('DELT', data['user'], data['password'], True,
+            data = constructDataClient('DELT', data['user'], data['password'], True,
                                                 file_path=file_id, file_size=0, file_hash=file_hash)
         return data
 
@@ -275,7 +277,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Rename file handler for RNME operation
         """
         if self.__files is None:
-            data = commands.constructDataClient('AUTH', data['user'], data['password'], True,
+            data = constructDataClient('AUTH', data['user'], data['password'], True,
                                                 "WARNING: Please, use LIST to get last cashe of your files from server...")
         else:
             self.__filenumber = ''
@@ -301,7 +303,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
                     new_name = ''
                 if file_format != file_format_db:
                      new_name = ''
-            data = commands.constructDataClient('RNME', data['user'], data['password'], True,
+            data = constructDataClient('RNME', data['user'], data['password'], True,
                                                 file_id=file_id, new_name=new_name)
         return data
 
@@ -339,7 +341,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print 'Attempts left: %d\n' % self.counterAttemptsLogin
             self.counterAttemptsLogin -= 1
             login, password = self.inputData()
-            data = commands.constructDataClient('AUTH', login, password, False)
+            data = constructDataClient('AUTH', login, password, False)
         else:
             print '\nTrying to hacking account or DDoS server? I will stop YOU!'
             reactor.stop()
@@ -350,7 +352,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Processing for SYNC command
         """
         if self.__files is None:
-            data = commands.constructDataClient('AUTH', data['user'], data['password'], True,
+            data = constructDataClient('AUTH', data['user'], data['password'], True,
                                                 "WARNING: Please, use LIST to get last cashe of your files from server...")
         else:
             self.__filenumber = ''
@@ -385,7 +387,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             new_hash = md5_for_file(file_path_src)
             files = [(self.__files[self.__filenumber].original_name, self.__files[self.__filenumber].server_name,
                     self.__files[self.__filenumber].file_hash, new_hash)]
-            data = commands.constructDataClient('SYNC', data['user'], data['password'], True,
+            data = constructDataClient('SYNC', data['user'], data['password'], True,
                                                 files_u=files, sync_type=op_type, file_path_src=file_path_src)
         return data
 
@@ -438,7 +440,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         print "--------------------------------"
         print "Files:"
         for (id_enum, file_storage) in enumerate(self.__files):
-            file_size = commands.convertSize(file_storage.chunk_size)
+            file_size = convertSize(file_storage.chunk_size)
             print "%d. %s\t[Size: %s]" % (id_enum + 1, file_storage.original_name, str(file_size))
         print "--------------------------------"
 
@@ -457,7 +459,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
             Print available commands into console
         """
         print "Available commands:"
-        for cmd in filter(lambda command: command not in ("REAF", "GETF", "WRTF", "DELF", "RENF", "REPF"), sorted(self.commands.keys())):
+        for cmd in sorted(self.commands.keys()):
             print "\t%s \t %s" % (cmd, self.commands[cmd])
 
     def inputData(self):

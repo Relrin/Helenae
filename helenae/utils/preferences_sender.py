@@ -1,5 +1,5 @@
 import sys
-from json import dumps, loads, load
+from json import dumps, load
 
 from twisted.internet import reactor, ssl
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS

@@ -17,9 +17,10 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
     """
         Message-based WebSockets client
         Template contains some parts as string:
-            [USER_ID:OPERATION_NAME:FILE_ID] -  15 symbols for USER_ID,
-                                                10 symbols for OPERATION_NAME,
-                                                25 symbols for FILE_ID
+            [USER_ID:OPERATION_NAME:FILE_ID:PSW_KEY] -  15 symbols for USER_ID,
+                                                        10 symbols for OPERATION_NAME,
+                                                        25 symbols for FILE_ID,
+                                                        32 symbols for PSW_KEY
             other - some data
     """
     def onOpen(self):
