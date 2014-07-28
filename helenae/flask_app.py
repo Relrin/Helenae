@@ -2,10 +2,11 @@ from flask import Flask, request, session
 from flask_sqlalchemy import SQLAlchemy
 from flask.ext.babelex import Babel
 from db import tables as dbTables
+from db.queries import engine as db_engine
 
 app = Flask(__name__, template_folder='./web/templates/', static_folder='./web/static/', static_url_path='')
 app.config['SECRET_KEY'] = 'some_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:password@localhost/csan'
+app.config['SQLALCHEMY_DATABASE_URI'] = db_engine
 db_connection = SQLAlchemy(app)
 
 # Initialize babel
