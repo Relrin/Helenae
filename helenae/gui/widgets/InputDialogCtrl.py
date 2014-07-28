@@ -14,8 +14,8 @@ class InputDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=wx.ID_CANCEL)
 
-        self.icon = wx.Icon(ico_folder + '/icons/app.ico', wx.BITMAP_TYPE_ICO)
-        self.SetIcon(self.icon)
+        # self.icon = wx.Icon(ico_folder + '/icons/app.ico', wx.BITMAP_TYPE_ICO)
+        # self.SetIcon(self.icon)
 
         size = (275, 80)
         self.SetSize(size)
