@@ -1,16 +1,10 @@
 import os
 import sys
-import datetime
 import pickle
 from json import dumps, loads
 from hashlib import sha256
-from time import gmtime, strftime
 from subprocess import Popen, PIPE, STDOUT
 
-import sqlalchemy
-import sqlalchemy.exc
-from sqlalchemy import and_, func, asc
-from sqlalchemy.orm import sessionmaker
 from twisted.internet import reactor, ssl
 from twisted.internet.task import deferLater
 from twisted.python import log, logfile
@@ -19,8 +13,7 @@ from twisted.web.wsgi import WSGIResource
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
 
 from balancer.balancer import Balancer
-from db.tables import File as FileTable
-from db.tables import Users, FileServer, FileSpace, Catalog
+from db.queries import Queries
 from flask_app import app
 from utils import commands
 
@@ -31,7 +24,6 @@ from utils import commands
 POLL_TIME = 300    # polling file servers every 5 min
 log_file = logfile.LogFile("service.log", ".")
 log.startLogging(log_file)
-engine = sqlalchemy.create_engine('postgresql://user:password@localhost/csan', pool_size=20, max_overflow=0)
 
 
 def checkServerStatus(ip, port):
@@ -52,32 +44,16 @@ class DFSServerProtocol(WebSocketServerProtocol):
         # initialize sessionmaker, which get access to work with DB
         # DONT FORGET use after all "self.sesison.close()"!!!
         self.lstFS = []
-        self.Session = sessionmaker(bind=engine)
         self.commands_handlers = self.__initHandlersUser()
         self.balancer = Balancer()
         d = deferLater(reactor, 5, self.__pollServers)
-
-    def __create_session(self):
-        session = self.Session()
-        session._model_changes = {}
-        return session
 
     def __updateStatusDB(self):
         """
             Updating status field in DB for every available server
         """
         dump = self.lstFS
-        session = self.__create_session()
-        for server in dump:
-            ip = server[0]
-            port = server[1]
-            status = server[2]
-            dict_status = {"status": unicode(status)}
-            if status == 'ONLINE':
-                dict_status["last_online"] = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-            session.query(FileServer).filter_by(ip=ip, port=port).update(dict_status)
-            session.commit()
-        session.close()
+        Queries.updateServersStatus(dump)
 
     def __pollServers(self):
         """
@@ -87,30 +63,11 @@ class DFSServerProtocol(WebSocketServerProtocol):
             self.lstFS.append(result)
 
         log.msg("[POLL] Start daemon for polling servers...")
-        poll_session = self.__create_session()
-        servers = poll_session.execute(sqlalchemy.select([FileServer]))
-        servers = servers.fetchall()
-        poll_session.close()
+        servers = Queries.getAllFileServers()
         for server in servers:
             dlGetStatus = deferLater(reactor, 0, checkServerStatus, server.ip, server.port).addCallback(getResult)
         dlUpdateDB = deferLater(reactor, 0, self.__updateStatusDB)
         dlUpdate = deferLater(reactor, 5, self.__updateFileServerList)
-
-    def __getFileServerDB(self, file_hash):
-        try:
-            session = self.__create_session()
-            result = session.query(FileTable).filter_by(file_hash=file_hash).first()
-            if result is not None:
-                if result.server_id[0].status != 'OFFLINE':
-                    result = (result.server_id[0].ip, result.server_id[0].port)
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
-        return result
-
 
     def __updateFileServerList(self):
         """
@@ -146,11 +103,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
     def registration(self, data):
         log.msg("[REGS] New user=%s: want to create account" % (data['user']))
         try:
-            session = self.__create_session()
-            checker = session.execute(sqlalchemy.select([Users])
-                                                .where(Users.name == data['user'])
-                                     )
-            checker = checker.fetchall()
+            checker = Queries.getSimilarUsers(data['user'])
             if len(checker) == 0:
                 if len(data['user']) < 3:
                     raise ValueError('Length of username was been more than 3 symbols!')
@@ -159,33 +112,10 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 elif len(data['fullname']) == 0:
                     raise ValueError("Full name can't be empty!")
 
-                log.msg("[REGS] Creating special main catalog for new user...")
-                #catalog_name = str(data['user'] + "_main_" + strftime("%d%m%Y", gmtime()))
+                log.msg("[REGS] Creating new user...")
                 catalog_name = str(data['user'] + "_main")
-                new_dir = Catalog(catalog_name)
-                session.add(new_dir)
-                session.commit()
-
-                log.msg("[REGS] Creating file space for new user...")
-                #fs_name = str(data['user'] + "fs_" + strftime("%d%m%Y", gmtime()))
                 fs_name = str(data['user'] + "_fs")
-                new_fs = FileSpace(fs_name, new_dir)
-                session.add(new_fs)
-                session.commit()
-
-                log.msg("[REGS] Add new user into DB...")
-                fs = session.execute(sqlalchemy.select([FileSpace])
-                                               .where(FileSpace.storage_name == fs_name)
-                                     )
-                fs = fs.fetchone()
-                time_is = datetime.datetime.strptime(strftime("%d.%m.%Y", gmtime()), "%d.%m.%Y").date()
-                time_is = time_is + datetime.timedelta(days=365)
-                date_max = time_is.strftime("%d.%m.%Y")
-                id_new = session.execute(func.count(Users.id)).fetchone()[0] + 1
-                password_hash = str(sha256(data['password']+str(id_new)).hexdigest())
-                new_user = Users(data['user'], data['fullname'], password_hash, data['email'], date_max, 1, 2, fs.id)
-                session.add(new_user)
-                session.commit()
+                Queries.createNewUser(catalog_name, fs_name, data['user'], data['password'], data['fullname'], data['email'])
                 data['error'] = []
                 data['auth'] = True
                 data['cmd'] = 'CREG'
@@ -197,39 +127,20 @@ class DFSServerProtocol(WebSocketServerProtocol):
         except ValueError, exc:
             data['error'].append('ERROR: %s' % exc.message)
             data['cmd'] = 'RREG'
-        except sqlalchemy.exc.ArgumentError, e:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
         return data
 
     def fileserver_auth(self, data):
         connection_data, port = data
         result = {}
         log.msg("[FSRV] Adding new fileserver into DB with IP=%s, PORT=%d" % (connection_data.host, port))
-        try:
-            session = self.__create_session()
-            checker = session.execute(sqlalchemy.select([FileServer])
-                                                .where(and_(FileServer.ip == connection_data.host, FileServer.port == port))
-                                     )
-            checker = checker.fetchall()
-            if len(checker) == 0:
-                log.msg("[FSRV] Successfully added!")
-                new_fs = FileServer(connection_data.host, port, 'ONLINE')
-                session.add(new_fs)
-                session.commit()
-                result['errors'] = ''
-            else:
-                log.msg("[FSRV] Files server with IP=%s, PORT=%d already contains at DB" % (connection_data.host, port))
-                result['errors'] = 'Already exists!'
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+        checker = Queries.getFileServerByIpAndPort(connection_data.host, port)
+        if len(checker) == 0:
+            log.msg("[FSRV] Successfully added!")
+            Queries.createNewFileServer(connection_data.host, port)
+            result['errors'] = ''
+        else:
+            log.msg("[FSRV] Files server with IP=%s, PORT=%d already contains at DB" % (connection_data.host, port))
+            result['errors'] = 'Already exists!'
         return result
 
     def authorization(self, data):
@@ -237,34 +148,25 @@ class DFSServerProtocol(WebSocketServerProtocol):
             Checking user with DB
         """
         log.msg("[AUTH] User=%s trying to auth..." % data['user'])
-        try:
-            session = self.__create_session()
-            result = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user']))
-            result = result.fetchone()
-            result_msg = "[AUTH] User=%s successfully logged..." % data['user']
-            # user not found at DB
-            if result is None:
-                data['cmd'] = 'RAUT'
-                data['error'].append('\nWARNING: User not found')
-                result_msg = "[AUTH] User=%s not found" % data['user']
-            else:
-                if result['name'] == data['user']:
-                    # correct users info --> real user
-                    hash_psw = str(sha256(data['password']+str(result['id'])).hexdigest())
-                    if result['password'] == str(hash_psw):
-                        data['auth'] = True
-                    # incorrect password --> fake user
-                    else:
-                        data['cmd'] = 'RAUT'
-                        data['error'].append('\nERROR: Incorrect password. Try again...')
-                        result_msg = "[AUTH] Incorrect password for user=%s" % data['user']
-            log.msg(result_msg)
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+        result = Queries.getUser(data['user'])
+        result_msg = "[AUTH] User=%s successfully logged..." % data['user']
+        # user not found at DB
+        if result is None:
+            data['cmd'] = 'RAUT'
+            data['error'].append('\nWARNING: User not found')
+            result_msg = "[AUTH] User=%s not found" % data['user']
+        else:
+            if result['name'] == data['user']:
+                # correct users info --> real user
+                hash_psw = str(sha256(data['password']+str(result['id'])).hexdigest())
+                if result['password'] == str(hash_psw):
+                    data['auth'] = True
+                # incorrect password --> fake user
+                else:
+                    data['cmd'] = 'RAUT'
+                    data['error'].append('\nERROR: Incorrect password. Try again...')
+                    result_msg = "[AUTH] Incorrect password for user=%s" % data['user']
+        log.msg(result_msg)
         return data
 
     def write_file(self, data):
@@ -272,55 +174,37 @@ class DFSServerProtocol(WebSocketServerProtocol):
             Checking user with DB
         """
         log.msg("[WRTE] User=%s trying to write file..." % data['user'])
-        try:
-            session = self.__create_session()
-            server = self.balancer.getFileServer(data['cmd'], data['file_hash'])
-            if server is None:
-                msg = "ERROR: Can't write now your file: servers in offline. Try later..."
-                data['cmd'] = 'AUTH'
-                data['error'].append(msg)
-                log.msg(log.msg("[WRTE] %s..." % msg))
-            else:
-                # get info from DB
-                user_db = session.execute(sqlalchemy.select([Users])
-                                                    .where(Users.name == data['user'])
-                                          ).fetchone()
-                fs = session.execute(sqlalchemy.select([FileSpace])
-                                               .where(FileSpace.id == user_db.filespace_id)
-                                     ).fetchone()
-                catalog = session.execute(sqlalchemy.select([Catalog])
-                                                    .where(Catalog.fs_id == fs.id)
-                                                    .order_by(asc(Catalog.id))
-                                          ).fetchone()
-                server_ip = str(server[0])
-                port = int(server[1])
-                fileserver = session.query(FileServer).filter_by(ip=server_ip, port=port).first()
-                cnt_files = session.execute(func.count(FileTable.id)).fetchone()[0] + 1
-                # processing data
-                user_path, original_filename = os.path.split(data['file_path'])
-                if not data['gui']:
-                    user_path = u''
-                filename, type_file = os.path.splitext(original_filename)
-                user_id = 'u' + str(user_db.id).rjust(14, '0')
-                file_id = str(cnt_files).rjust(25-len(type_file), '0') + type_file
-                data['server'] = server
-                data['json'] = ('WRITE_FILE', user_id, file_id, data['file_path'])
-                # write record into DB
-                new_file = FileTable(original_filename, file_id, data['file_hash'], user_path, data['file_size'], 0, catalog.id)
-                new_file.server_id.append(fileserver)
-                session.add(new_file)
-                session.commit()
-                log.msg(log.msg("[WRTE] Operation with DB and User=%s has complete..." % data['user']))
-                data['cmd'] = 'COWF'
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            del data['file_path']
-            del data['file_hash']
-            del data['file_size']
-            session.close()
+        server = self.balancer.getFileServer(data['cmd'], data['file_hash'])
+        if server is None:
+            msg = "ERROR: Can't write now your file: servers in offline. Try later..."
+            data['cmd'] = 'AUTH'
+            data['error'].append(msg)
+            log.msg(log.msg("[WRTE] %s..." % msg))
+        else:
+            # get info from DB
+            user_db = Queries.getUser(data['user'])
+            fs = Queries.getFileSpace(user_db.filespace_id)
+            catalog = Queries.getUserCatalogOnFilespace(fs.id)
+            server_ip = str(server[0])
+            port = int(server[1])
+            cnt_files = Queries.getCountFiles() + 1
+            # processing data
+            user_path, original_filename = os.path.split(data['file_path'])
+            if not data['gui']:
+                user_path = u''
+            filename, type_file = os.path.splitext(original_filename)
+            user_id = 'u' + str(user_db.id).rjust(14, '0')
+            file_id = str(cnt_files).rjust(25-len(type_file), '0') + type_file
+            data['server'] = server
+            data['json'] = ('WRITE_FILE', user_id, file_id, data['file_path'])
+            # write record into DB
+            Queries.createFileRecordOneChunk(original_filename, file_id, data['file_hash'], user_path,
+                                             data['file_size'], catalog.id, server_ip, port)
+            log.msg(log.msg("[WRTE] Operation with DB and User=%s has complete..." % data['user']))
+            data['cmd'] = 'COWF'
+        del data['file_path']
+        del data['file_hash']
+        del data['file_size']
         return data
 
     def __get_files(self, user_id):
@@ -328,23 +212,9 @@ class DFSServerProtocol(WebSocketServerProtocol):
             Get files from DB
         """
         result = None, None, None
-        try:
-            session = self.__create_session()
-            user = session.execute(sqlalchemy.select([Users])
-                                             .where(Users.name == user_id)
-                                   ).fetchone()
-            catalog = session.execute(sqlalchemy.select([Catalog])
-                                                .where(Catalog.fs_id == user.filespace_id)
-                                      ).fetchone()
-            files = session.query(FileTable).filter_by(catalog_id=catalog.id).all()
-            if len(files) > 0:
-                result = files, [file.server_id for file in files], user.id
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+        files, servers, userID = Queries.getAllFileRecords(user_id)
+        if len(files) > 0:
+            result = files, servers, userID
         return result
 
     def get_fs_structure(self, data):
@@ -364,7 +234,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
             Building serialized file list
         """
-        server = self.__getFileServerDB(data['file_hash'])
+        server = Queries.getFileServer(data['file_hash'])
         if server is None:
             msg = "ERROR: Can't read now your file: servers in offline. Try later..."
             data['cmd'] = 'AUTH'
@@ -380,62 +250,37 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
             Getting all data, which need for read all files (filename, path, server id and port)
         """
-        try:
-            log.msg('[REAF] Getting data for User=%s' % (data['user']))
-            files_lst = []
-            session = self.__create_session()
-            fs_name = str(data['user'] + "_fs")
-            user_db = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user'])).fetchone()
-            user_id = 'u' + str(user_db.id).rjust(14, '0')
-            fs_db = session.execute(sqlalchemy.select([FileSpace]).where(FileSpace.storage_name == fs_name)).fetchone()
-            catalog = session.execute(sqlalchemy.select([Catalog]).where(Catalog.fs_id == fs_db.id)).fetchone()
-            for name, path in data['files_read']:
-                user_file = session.query(FileTable).filter_by(catalog_id=catalog.id, original_name=name, user_path=path).first()
-                servers = []
-                for server in user_file.server_id:
-                    servers.append((server.ip, server.port))
-                files_lst.append((name, path, user_file.server_name, servers))
-            data['cmd'] = 'CREA'
-            data['user_id'] = user_id
-            data['files_read'] = files_lst
-            log.msg('[REAF] Getting data for User=%s has complete!' % (data['user']))
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+        log.msg('[REAF] Getting data for User=%s' % (data['user']))
+        files_lst = []
+        fs_name = str(data['user'] + "_fs")
+        user_db = Queries.getUser(data['user'])
+        user_id = 'u' + str(user_db.id).rjust(14, '0')
+        fs_db = Queries.getFileSpaceByName(fs_name)
+        catalog = Queries.getUserCatalogOnFilespace(fs_db.id)
+        for name, path in data['files_read']:
+            user_file, user_file_servers = Queries.getFirstFileRecord(name, path, catalog.id)
+            files_lst.append((name, path, user_file.server_name, user_file_servers))
+        data['cmd'] = 'CREA'
+        data['user_id'] = user_id
+        data['files_read'] = files_lst
+        log.msg('[REAF] Getting data for User=%s has complete!' % (data['user']))
         return data
 
     def delete_file(self, data):
         """
             Delete file from record, and after this - from server
         """
-        server = self.__getFileServerDB(data['file_hash'])
-        try:
-            session = self.__create_session()
-            if server is None:
-                msg = "ERROR: Can't delete now your file: servers in offline. Try later..."
-                data['cmd'] = 'AUTH'
-                data['error'].append(msg)
-                log.msg(log.msg("[DELT] %s..." % msg))
-            else:
-                log.msg('[DELT] Delete data for User=%s' % (data['user']))
-                file = session.query(FileTable).filter_by(id=data['file_path']).first()
-                servers = file.server_id[:]
-                for server in servers:
-                    file.server_id.remove(server)
-                session.commit()
-                session.delete(file)
-                session.commit()
-                data['cmd'] = 'CDLT'
-                log.msg('[DELT] Delete data for User=%s has complete!' % (data['user']))
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+        server = Queries.getFileServer(data['file_hash'])
+        if server is None:
+            msg = "ERROR: Can't delete now your file: servers in offline. Try later..."
+            data['cmd'] = 'AUTH'
+            data['error'].append(msg)
+            log.msg(log.msg("[DELT] %s..." % msg))
+        else:
+            log.msg('[DELT] Delete data for User=%s' % (data['user']))
+            Queries.deleteFileRecordByID(data['file_path'])
+            data['cmd'] = 'CDLT'
+            log.msg('[DELT] Delete data for User=%s has complete!' % (data['user']))
         del data['file_path']
         return data
 
@@ -443,21 +288,12 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
             Renaming file on DB (NOT on file servers!)
         """
-        try:
-            session = self.__create_session()
-            log.msg('[RNME] Rename file by User=%s' % (data['user']))
-            dict_file = {"original_name": data['new_name']}
-            file_id = data['file_id']
-            session.query(FileTable).filter_by(id=file_id).update(dict_file)
-            session.commit()
-            data['cmd'] = 'CRNM'
-            log.msg('[RNME] Rename file by User=%s has complete!' % (data['user']))
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+        log.msg('[RNME] Rename file by User=%s' % (data['user']))
+        dict_file = {"original_name": data['new_name']}
+        file_id = data['file_id']
+        Queries.updateFileRecordData(file_id, dict_file)
+        data['cmd'] = 'CRNM'
+        log.msg('[RNME] Rename file by User=%s has complete!' % (data['user']))
         del data['file_id']
         del data['new_name']
         return data
@@ -466,60 +302,38 @@ class DFSServerProtocol(WebSocketServerProtocol):
         """
             Synchronization files using rsync tool
         """
-        try:
-            server = None
-            session = self.__create_session()
-            user_db = session.execute(sqlalchemy.select([Users])
-                                                .where(Users.name == data['user'])
-                                     ).fetchone()
-            user_id = 'u' + str(user_db.id).rjust(14, '0')
-            # when want to sync more than one file...
-            server = []
-            for file in data['files_u']:
-                original_name = file[0]
-                server_name = file[1]
-                file_hash = file[2]
-                file_hash_new = file[3][0]
-                file_size = file[3][1]
-                fs = self.__getFileServerDB(file_hash)
-                if file_hash != file_hash_new and data['sync_type'] == 'WSYNC_FILE':
-                    dict_file = {"file_hash": file_hash_new, "chunk_size": file_size}
-                    session.query(FileTable).filter_by(original_name=original_name, file_hash=file_hash).update(dict_file)
-                    session.commit()
-                server.append((original_name, server_name) + (fs if fs else (None,)))
-            data['server'] = server
-            data['user_id'] = user_id
-            data['cmd'] = 'CSYN'
-            log.msg('[SYNC] SYNC data for User=%s has complete!' % (data['user']))
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
-            del data['files_u']
+        server = []
+        user_db = Queries.getUser(data['user'])
+        user_id = 'u' + str(user_db.id).rjust(14, '0')
+        # when want to sync more than one file...
+        for file in data['files_u']:
+            original_name = file[0]
+            server_name = file[1]
+            file_hash = file[2]
+            file_hash_new = file[3][0]
+            file_size = file[3][1]
+            fs = Queries.getFileServer(file_hash)
+            if file_hash != file_hash_new and data['sync_type'] == 'WSYNC_FILE':
+                dict_file = {"file_hash": file_hash_new, "chunk_size": file_size}
+                Queries.updateFileRecordDataByHash(original_name, file_hash, dict_file)
+            server.append((original_name, server_name) + (fs if fs else (None,)))
+        data['server'] = server
+        data['user_id'] = user_id
+        data['cmd'] = 'CSYN'
+        log.msg('[SYNC] SYNC data for User=%s has complete!' % (data['user']))
+        del data['files_u']
         return data
 
     def get_all_user_files(self, data):
-        try:
-            log.msg('[GETF] Getting all files for User=%s' % (data['user']))
-            files_lst = []
-            session = self.__create_session()
-            fs_name = str(data['user'] + "_fs")
-            fs_db = session.execute(sqlalchemy.select([FileSpace]).where(FileSpace.storage_name == fs_name)).fetchone()
-            catalog = session.execute(sqlalchemy.select([Catalog]).where(Catalog.fs_id == fs_db.id)).fetchone()
-            files = session.query(FileTable).filter_by(catalog_id=catalog.id)
-            for record in files.yield_per(1):
-                files_lst.append((record.original_name, record.user_path))
-            data['cmd'] = 'READ'
-            data['files_read'] = files_lst
-            log.msg('[GETF] GETF data for User=%s has complete!' % (data['user']))
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+        log.msg('[GETF] Getting all files for User=%s' % (data['user']))
+        files_lst = []
+        fs_name = str(data['user'] + "_fs")
+        files = Queries.getAllFileRecordsIter(fs_name)
+        for record in files.yield_per(1):
+            files_lst.append((record.original_name, record.user_path))
+        data['cmd'] = 'READ'
+        data['files_read'] = files_lst
+        log.msg('[GETF] GETF data for User=%s has complete!' % (data['user']))
         return data
 
     def massive_write_files(self, data):
@@ -527,115 +341,64 @@ class DFSServerProtocol(WebSocketServerProtocol):
             Massive write files to file storage.
             If file already exists, then synchronize with him.
         """
-        try:
-            log.msg('[WRTF] Massive write files for User=%s' % (data['user']))
-            files_lst = []
-            session = self.__create_session()
-            fs_name = str(data['user'] + "_fs")
-            user_db = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user'])).fetchone()
-            user_id = 'u' + str(user_db.id).rjust(14, '0')
-            fs_db = session.execute(sqlalchemy.select([FileSpace]).where(FileSpace.storage_name == fs_name)).fetchone()
-            catalog = session.execute(sqlalchemy.select([Catalog]).where(Catalog.fs_id == fs_db.id)).fetchone()
-            for name, path, file_hash_new, size in data['files_write']:
-                file_path = path.replace(data['default_dir'] , '')
-                user_file = session.query(FileTable).filter_by(catalog_id=catalog.id, original_name=name, user_path=file_path).first()
-                # if file not exists, then add record to database and write file in fileserver
-                if user_file is None:
-                    server = self.balancer.getFileServer("WRTE", file_hash_new)
-                    if server is not None:
-                        server_ip = str(server[0])
-                        port = int(server[1])
-                        fileserver = session.query(FileServer).filter_by(ip=server_ip, port=port).first()
-                        cnt_files = session.execute(func.count(FileTable.id)).fetchone()[0] + 1
-                        # processing data
-                        filename, type_file = os.path.splitext(name)
-                        file_id = str(cnt_files).rjust(25-len(type_file), '0') + type_file
-                        # write record into DB
-                        new_file = FileTable(name, file_id, file_hash_new, file_path, size, 0, catalog.id)
-                        new_file.server_id.append(fileserver)
-                        session.add(new_file)
-                        session.commit()
-                        servers = []
-                        servers.append((server_ip, port))
-                        files_lst.append(('WRITE_FILE', name, path, file_id, servers))
-                # if file already exists, then just sync with file on fileserver
-                elif user_file.file_hash != file_hash_new:
-                    user_file.file_hash = file_hash_new
-                    user_file.chunk_size = size
+        log.msg('[WRTF] Massive write files for User=%s' % (data['user']))
+        files_lst = []
+        fs_name = str(data['user'] + "_fs")
+        user_db = Queries.getUser(data['user'])
+        user_id = 'u' + str(user_db.id).rjust(14, '0')
+        fs_db = Queries.getFileSpaceByName(fs_name)
+        catalog = Queries.getUserCatalogOnFilespace(fs_db.id)
+        for name, path, file_hash_new, size in data['files_write']:
+            file_path = path.replace(data['default_dir'] , '')
+            user_file, user_file_servers = Queries.getFirstFileRecord(name, file_path, catalog.id)
+            # if file not exists, then add record to database and write file in fileserver
+            if user_file is None:
+                server = self.balancer.getFileServer("WRTE", file_hash_new)
+                if server is not None:
+                    server_ip = str(server[0])
+                    port = int(server[1])
+                    cnt_files = Queries.getCountFiles() + 1
+                    # processing data
+                    filename, type_file = os.path.splitext(name)
+                    file_id = str(cnt_files).rjust(25-len(type_file), '0') + type_file
+                    # write record into DB
+                    Queries.createFileRecordOneChunk(name, file_id, file_hash_new, file_path, size, catalog.id, server_ip, port)
                     servers = []
-                    for server in user_file.server_id:
-                        servers.append((server.ip, server.port))
-                    files_lst.append(('WSYNC_FILE', name, path, user_file.server_name, servers))
-                    session.commit()
-            data['cmd'] = 'CWRT'
-            data['user_id'] = user_id
-            data['files_write'] = files_lst
-            log.msg('[WRTF] WRTF for User=%s has complete!' % (data['user']))
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+                    servers.append((server_ip, port))
+                    files_lst.append(('WRITE_FILE', name, path, file_id, servers))
+            # if file already exists, then just sync with file on fileserver
+            elif user_file.file_hash != file_hash_new:
+                Queries.updateFirstFileRecordHashAndSize(user_file.id, file_hash_new, size)
+                files_lst.append(('WSYNC_FILE', name, path, user_file.server_name, user_file_servers))
+        data['cmd'] = 'CWRT'
+        data['user_id'] = user_id
+        data['files_write'] = files_lst
+        log.msg('[WRTF] WRTF for User=%s has complete!' % (data['user']))
         return data
 
     def massive_delete_files(self, data):
         """
             Massive delete files from file storage
         """
-        try:
-            del_files = []
-            log.msg('[DELF] Delete data for User=%s' % (data['user']))
-            session = self.__create_session()
-            user_db = session.execute(sqlalchemy.select([Users]).where(Users.name == data['user'])).fetchone()
-            user_id = 'u' + str(user_db.id).rjust(14, '0')
-            for name, path, file_hash, size in data['deleted_files']:
-                file_servers = []
-                file_path = path.replace(data['default_dir'] , '')
-                user_file = session.query(FileTable).filter_by(original_name=name, user_path=file_path, file_hash=file_hash).first()
-                if user_file is not None:
-                    servers = user_file.server_id[:]
-                    for server in servers:
-                        user_file.server_id.remove(server)
-                        file_servers.append((server.ip, server.port))
-                    del_files.append(('DELET_FILE', name, path, user_file.server_name, file_servers))
-                    session.delete(user_file)
-            session.commit()
-            data['cmd'] = 'CDLT'
-            data['user_id'] = user_id
-            data['deleted_files'] = del_files
-            log.msg('[DELF] Delete data for User=%s has complete!' % (data['user']))
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+        log.msg('[DELF] Delete data for User=%s' % (data['user']))
+        user_db = Queries.getUser(data['user'])
+        user_id = 'u' + str(user_db.id).rjust(14, '0')
+        del_files = Queries.deleteManyFileRecords(data['deleted_files'], data['default_dir'])
+        data['cmd'] = 'CDLT'
+        data['user_id'] = user_id
+        data['deleted_files'] = del_files
+        log.msg('[DELF] Delete data for User=%s has complete!' % (data['user']))
         return data
 
     def massive_rename_files(self, data):
         """
             Rename one file on massive filepaths in folder
         """
-        try:
-            log.msg('[RENF] Rename files for User=%s' % (data['user']))
-            session = self.__create_session()
-            for name, path, file_hash, new_filename, new_file_path in data['rename_files']:
-                user_file = session.query(FileTable).filter_by(original_name=name, user_path=path, file_hash=file_hash).first()
-                if user_file is not None:
-                    if name != new_filename:
-                        user_file.original_name = new_filename
-                    if path != new_file_path:
-                        user_file.user_path = new_file_path
-                    session.commit()
-            data['cmd'] = 'CREN' if data['cmd'] == 'RENF' else 'CREP'
-            log.msg('[RENF] Rename files for User=%s has complete!' % (data['user']))
-        except sqlalchemy.exc.ArgumentError:
-            log.msg('SQLAlchemy ERROR: Invalid or conflicting function argument is supplied')
-        except sqlalchemy.exc.CompileError:
-            log.msg('SQLAlchemy ERROR: Error occurs during SQL compilation')
-        finally:
-            session.close()
+        log.msg('[RENF] Rename files for User=%s' % (data['user']))
+        for name, path, file_hash, new_filename, new_file_path in data['rename_files']:
+            Queries.updateFirstFileRecordNameAndPath(name, path, file_hash, new_filename, new_file_path)
+        data['cmd'] = 'CREN' if data['cmd'] == 'RENF' else 'CREP'
+        log.msg('[RENF] Rename files for User=%s has complete!' % (data['user']))
         del data['rename_files']
         return data
 
@@ -675,6 +438,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
                     json_data['error'].append('ERROR: This command is not supported on server...')
             response = dumps(json_data)
         self.sendMessage(str(response), sync=True)
+
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'debug':

@@ -20,6 +20,8 @@ from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientPr
 from utils.jsonConstructor import constructDataClient
 from utils.crypto.md5 import md5_for_file
 from utils.wx.CustomEvents import UpdateFileListCtrlEvent, EVT_UPDATE_FILE_LIST_CTRL
+from utils.filesystem import getFileList
+
 from gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
 from gui.widgets.Filemanager import ID_BUTTON_WRITE, ID_WRITE, ID_BUTTON_REMOVE_FILE, ID_REMOVE, \
     ID_BUTTON_RENAME, ID_RENAME, ID_BUTTON_TRANSFER, ID_REPLACE
@@ -274,12 +276,18 @@ class GUIClientProtocol(WebSocketClientProtocol):
                     file_hash, size = md5_for_file(path)
                     deleted_files.append((item, currentDir, file_hash, size))
                 elif os.path.isdir(path):
-                    for root, dirnames, filenames in os.walk(path):
-                        for filename in filenames:
-                            folder = os.path.normpath(root) + '/'
-                            file_path = os.path.normpath(os.path.join(root, filename))
-                            file_hash, size = md5_for_file(file_path)
-                            deleted_files.append((filename, folder, file_hash, size))
+                    if len(getFileList(path)) > 0:
+                        for root, dirnames, filenames in os.walk(path):
+                            for filename in filenames:
+                                folder = os.path.normpath(root) + '/'
+                                file_path = os.path.normpath(os.path.join(root, filename))
+                                file_hash, size = md5_for_file(file_path)
+                                deleted_files.append((filename, folder, file_hash, size))
+                    else:
+                        if os.path.exists(path):
+                            shutil.rmtree(path)
+                            evt = UpdateFileListCtrlEvent()
+                            wx.PostEvent(self.gui, evt)
             data = dumps({'cmd': 'DELF', 'user': self.login, 'auth': True, 'error': [], 'deleted_files': deleted_files,
                           'default_dir': defaultDir})
             self.sendMessage(data, sync=True)
@@ -302,26 +310,25 @@ class GUIClientProtocol(WebSocketClientProtocol):
                     dump(dict_json, f)
                 self.__SendInfoToFileServer(json_file, server_ip, server_port)
                 try:
-                    if os.path.exists(src_file) and os.path.isfile(src_file):
+                    if (os.path.exists(src_file) and os.path.isfile(src_file)):
                         os.remove(src_file)
-                    if os.path.exists(path) and os.path.isdir(path):
+                    if (os.path.exists(path) and os.path.isdir(path)):
                         root_dir = self.gui.FileManager.files_folder.defaultDir
                         fileInFolder = len(os.walk(path).next()[2])
                         if fileInFolder == 0:
-                            for root, dirs, files in os.walk(path, topdown=False):
-                                for name in files:
-                                    os.remove(os.path.join(root, name))
+                            for root, dirs, files in os.walk(path):
                                 for name in dirs:
                                     path_to_folder = os.path.join(root, name)
-                                    if os.path.exists(path_to_folder):
-                                        os.rmdir(path_to_folder)
+                                    if len(os.walk(path_to_folder).next()[2]) == 0:
+                                        if os.path.exists(path_to_folder):
+                                            shutil.rmtree(path_to_folder)
                                 if root != root_dir:
                                     parentDir = self.gui.FileManager.files_folder.getParentDir(root)
                                     if self.gui.FileManager.files_folder.currentDir == root:
                                         self.gui.FileManager.files_folder.currentDir = parentDir
                                     os.chdir(parentDir)
-                                    if os.path.exists(root):
-                                        os.rmdir(root)
+                                    if os.path.exists(root) and len(os.walk(root).next()[2]) == 0:
+                                        shutil.rmtree(root)
                 except IOError:
                     pass
                 evt = UpdateFileListCtrlEvent()
