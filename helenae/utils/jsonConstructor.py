@@ -1,4 +1,4 @@
-from json import dumps
+from json import dumps, dump
 
 
 def constructBasicJSON():
@@ -28,3 +28,12 @@ def constructDataClient(cmd, user, hash_password, auth, error='', **kwargs):
     for item in kwargs.iterkeys():
         data[item] = kwargs[item]
     return dumps(data)
+
+
+def dumpConfigToJSON(json_file, cmd, user_id, file_id, src_file, key):
+    """
+        Write config to JSON file
+    """
+    with open(json_file, 'w+') as f:
+        dict_json = {"cmd": cmd, "user": user_id, "file_id": file_id, "src_file": src_file, "password": key}
+        dump(dict_json, f)
