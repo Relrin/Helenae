@@ -41,8 +41,6 @@ class DFSServerProtocol(WebSocketServerProtocol):
     commands = commands.commands_server
 
     def __init__(self):
-        # initialize sessionmaker, which get access to work with DB
-        # DONT FORGET use after all "self.sesison.close()"!!!
         self.lstFS = []
         self.commands_handlers = self.__initHandlersUser()
         self.balancer = Balancer()
@@ -397,7 +395,7 @@ class DFSServerProtocol(WebSocketServerProtocol):
         log.msg('[RENF] Rename files for User=%s' % (data['user']))
         for name, path, file_hash, new_filename, new_file_path in data['rename_files']:
             Queries.updateFirstFileRecordNameAndPath(name, path, file_hash, new_filename, new_file_path)
-        data['cmd'] = 'CREN' if data['cmd'] == 'RENF' else 'CREP'
+        data['cmd'] = 'CREN'
         log.msg('[RENF] Rename files for User=%s has complete!' % (data['user']))
         del data['rename_files']
         return data

@@ -17,7 +17,7 @@ wxreactor.install()
 from twisted.internet import reactor, ssl, threads
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
-from utils.jsonConstructor import constructDataClient
+from utils.jsonConstructor import constructDataClient, dumpConfigToJSON
 from utils.crypto.md5 import md5_for_file
 from utils.wx.CustomEvents import UpdateFileListCtrlEvent, EVT_UPDATE_FILE_LIST_CTRL
 from utils.filesystem import getFileList
@@ -59,7 +59,6 @@ class GUIClientProtocol(WebSocketClientProtocol):
         handlers['CWRT'] = self.__CWRT
         handlers['CDLT'] = self.__CDLT
         handlers['CREN'] = self.__CREN
-        handlers['CREP'] = self.__CREP
         return handlers
 
     def initBindings(self):
@@ -195,10 +194,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 server_ip = str(ip)
                 server_port = str(port)
                 json_file = os.path.normpath(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
-                with open(json_file, 'w+') as f:
-                    dict_json = {"cmd": "READU_FILE", "user": user_id, "file_id": file_id, "src_file": src_file,
-                                 "password": key}
-                    dump(dict_json, f)
+                dumpConfigToJSON(json_file, "READU_FILE", user_id, file_id, src_file, key)
                 self.__SendInfoToFileServer(json_file, server_ip, server_port)
                 evt = UpdateFileListCtrlEvent()
                 wx.PostEvent(self.gui, evt)
@@ -248,10 +244,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 server_port = str(server[1])
                 src_file = os.path.normpath(path + '/' + name)
                 json_file = os.path.normpath(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
-                with open(json_file, 'w+') as f:
-                    dict_json = {"cmd": cmd, "user": user_id, "file_id": file_id, "src_file": src_file,
-                                 "password": key}
-                    dump(dict_json, f)
+                dumpConfigToJSON(json_file, cmd, user_id, file_id, src_file, key)
                 self.__SendInfoToFileServer(json_file, server_ip, server_port)
 
         for cmd, name, path, file_id, servers in data['files_write']:
@@ -305,9 +298,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 server_port = str(server[1])
                 src_file = os.path.normpath(path + '/' + name)
                 json_file = os.path.normpath(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
-                with open(json_file, 'w+') as f:
-                    dict_json = {"cmd": cmd, "user": user_id, "file_id": file_id, "src_file": src_file, "password": key}
-                    dump(dict_json, f)
+                dumpConfigToJSON(json_file, cmd, user_id, file_id, src_file, key)
                 self.__SendInfoToFileServer(json_file, server_ip, server_port)
                 try:
                     if (os.path.exists(src_file) and os.path.isfile(src_file)):
@@ -331,6 +322,8 @@ class GUIClientProtocol(WebSocketClientProtocol):
                                         shutil.rmtree(root)
                 except IOError:
                     pass
+                except OSError:
+                    pass
                 evt = UpdateFileListCtrlEvent()
                 wx.PostEvent(self.gui, evt)
 
@@ -347,51 +340,54 @@ class GUIClientProtocol(WebSocketClientProtocol):
         if len(selectedItems) != 1:
             wx.MessageBox("Для операции перемеинования надо выбрать один файл или каталог!", "Сообщение")
         else:
-            rnm_files = []
-            currentDir = self.gui.FileManager.files_folder.currentDir
-            defaultDir = self.gui.FileManager.files_folder.defaultDir
-            dlg = InputDialog(self.gui, -1, "Введите новое имя файла или каталога", self.gui.FileManager.ico_folder, RenameValidator())
-            dlg.ShowModal()
-            if dlg.result is not None:
-                file_path = currentDir + selectedItems[0]
-                if os.path.isfile(file_path):
-                    path, file = os.path.split(file_path)
-                    file_hash, size = md5_for_file(file_path)
-                    file_name_part = os.path.splitext(file)
-                    file_name_part = (dlg.result, file_name_part[1])
-                    new_filename = ''.join(file_name_part)
-                    path = new_path = currentDir.replace(defaultDir, '')
-                    rnm_files.append((file, path, file_hash, new_filename, new_path))
-                    os.rename(currentDir+file, currentDir+new_filename)
-                elif os.path.isdir(file_path):
-                    file_path += '/'
-                    file_path_lst = filter(lambda item: item != '', file_path.split('/'))
-                    new_folder_lst = file_path_lst[:]
-                    new_folder_lst[-1] = dlg.result
-                    new_folder_path = '/' + '/'.join(new_folder_lst) + '/'
-                    for root, subdir, files in os.walk(file_path):
-                        for filename in files:
-                            file_in_folder_path = os.path.join(root, filename)
-                            file_hash, size = md5_for_file(file_in_folder_path)
-                            old_folder, name = os.path.split(file_in_folder_path)
-                            new_folder = filter(lambda item: item != '', old_folder.split('/'))
-                            new_folder[len(file_path_lst)-1] = dlg.result
+            try:
+                rnm_files = []
+                currentDir = self.gui.FileManager.files_folder.currentDir
+                defaultDir = self.gui.FileManager.files_folder.defaultDir
+                dlg = InputDialog(self.gui, -1, "Введите новое имя файла или каталога", self.gui.FileManager.ico_folder, RenameValidator())
+                dlg.ShowModal()
+                if dlg.result is not None:
+                    file_path = currentDir + selectedItems[0]
+                    if os.path.isfile(file_path):
+                        path, file = os.path.split(file_path)
+                        file_hash, size = md5_for_file(file_path)
+                        file_name_part = os.path.splitext(file)
+                        file_name_part = (dlg.result, file_name_part[1])
+                        new_filename = ''.join(file_name_part)
+                        path = new_path = currentDir.replace(defaultDir, '')
+                        rnm_files.append((file, path, file_hash, new_filename, new_path))
+                        os.rename(currentDir+file, currentDir+new_filename)
+                    elif os.path.isdir(file_path):
+                        file_path += '/'
+                        file_path_lst = filter(lambda item: item != '', file_path.split('/'))
+                        new_folder_lst = file_path_lst[:]
+                        new_folder_lst[-1] = dlg.result
+                        new_folder_path = '/' + '/'.join(new_folder_lst) + '/'
+                        for root, subdir, files in os.walk(file_path):
+                            for filename in files:
+                                file_in_folder_path = os.path.join(root, filename)
+                                file_hash, size = md5_for_file(file_in_folder_path)
+                                old_folder, name = os.path.split(file_in_folder_path)
+                                new_folder = filter(lambda item: item != '', old_folder.split('/'))
+                                new_folder[len(file_path_lst)-1] = dlg.result
 
-                            backup = new_folder_lst[:]
-                            if len(new_folder) > len(new_folder_lst):
-                                for elem_path in xrange(len(new_folder_lst), len(new_folder)):
-                                    backup.append(new_folder[elem_path])
+                                backup = new_folder_lst[:]
+                                if len(new_folder) > len(new_folder_lst):
+                                    for elem_path in xrange(len(new_folder_lst), len(new_folder)):
+                                        backup.append(new_folder[elem_path])
 
-                            full_new_folder = '/' + '/'.join(backup) + '/'
-                            full_new_folder = full_new_folder.replace(defaultDir, '')
-                            full_old_folder = old_folder.replace(defaultDir, '') + '/'
-                            rnm_files.append((filename, full_old_folder, file_hash, filename, full_new_folder))
-                    os.rename(file_path, new_folder_path)
-            data = dumps({'cmd': 'RENF', 'user': self.login, 'auth': True, 'error': [], 'rename_files': rnm_files})
-            self.sendMessage(data, sync=True)
+                                full_new_folder = '/' + '/'.join(backup) + '/'
+                                full_new_folder = full_new_folder.replace(defaultDir, '')
+                                full_old_folder = old_folder.replace(defaultDir, '') + '/'
+                                rnm_files.append((filename, full_old_folder, file_hash, filename, full_new_folder))
+                        os.rename(file_path, new_folder_path)
+                data = dumps({'cmd': 'RENF', 'user': self.login, 'auth': True, 'error': [], 'rename_files': rnm_files})
+                self.sendMessage(data, sync=True)
+            except OSError:
+                    wx.MessageBox("Такое имя файла или каталога уже существует!", "Сообщение")
 
     def __CREN(self, data):
-        msg_dlg = MsgDlg(None, "Перемеинование завершено успешно!")
+        msg_dlg = MsgDlg(None, "Задача выполнена успешно!")
         msg_dlg.ShowModal()
         evt = UpdateFileListCtrlEvent()
         wx.PostEvent(self.gui, evt)
@@ -450,12 +446,6 @@ class GUIClientProtocol(WebSocketClientProtocol):
                     data = dumps({'cmd': 'RENF', 'user': self.login, 'auth': True, 'error': [], 'rename_files': rnm_files})
                     self.sendMessage(data, sync=True)
             dlg.Destroy()
-
-    def __CREP(self, data):
-        msg_dlg = MsgDlg(None, "Процедура переноса успешно завершена!")
-        msg_dlg.ShowModal()
-        evt = UpdateFileListCtrlEvent()
-        wx.PostEvent(self.gui, evt)
 
     def onUpdateListCtrl(self, event):
         self.gui.FileManager.files_folder.showFilesInDirectory(self.gui.FileManager.files_folder.currentDir)
