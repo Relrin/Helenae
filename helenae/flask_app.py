@@ -6,7 +6,7 @@ from db.queries import engine as db_engine
 
 app = Flask(__name__, template_folder='./web/templates/', static_folder='./web/static/', static_url_path='')
 app.config['SECRET_KEY'] = 'some_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://dev:05900590@localhost/csan'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:password@localhost/csan'
 db_connection = SQLAlchemy(app)
 
 # Initialize babel
