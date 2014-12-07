@@ -44,6 +44,7 @@ class FileManager(wx.Frame):
         wx.Frame.__init__(self, parent, -1, title)
         self.parent = parent
         self.ico_folder = ico_folder
+        wx.Log.SetLogLevel(0)
 
         # file frame
         self.files_folder = FileListCtrl(self, -1, ico_folder)
@@ -174,8 +175,6 @@ class FileManager(wx.Frame):
         self.SetIcon(self.icon)
         self.SetMinSize(size)
 
-        # add status bar
-        self.sb = self.CreateStatusBar()
         self.Center()
 
     def UpDir(self, event):
@@ -282,6 +281,8 @@ class FileManager(wx.Frame):
     def OnSize(self, event):
         size = self.GetSize()
         self.files_folder.ResizeColumns(size.x)
+        if not hasattr(self, 'sb'):
+            self.sb = self.CreateStatusBar()
         self.sb.SetStatusText(os.getcwd())
         event.Skip()
 
