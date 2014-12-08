@@ -8,6 +8,8 @@ from validators.NameValidator import NameValidator
 
 from CompleteRegCtrl import CompleteRegCtrl
 
+import platform
+
 ID_BUTTON_REG = 800
 ID_BUTTON_EXIT = 801
 ID_TEXT_INPUT_LOG = 802
@@ -28,31 +30,45 @@ ID_PRELOADER_REGISTER = 817
 class RegisterWindow(wx.Frame):
 
     def __init__(self, parent, id, title, ico_folder):
-        wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
+
+        if platform.system() == 'Darwin':
+            wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE &
+                                                             ~ (wx.RESIZE_BORDER | wx.RESIZE_BOX | wx.MAXIMIZE_BOX))
+            RegisterLabelPos = (85, 15)
+            ErrorLabelFontSize = 10
+            SendButtonFontSize = 12
+            size = (400, 290)
+        else:
+            wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
+            RegisterLabelPos = (35, 15)
+            ErrorLabelFontSize = 7
+            SendButtonFontSize = 8
+            size = (400, 270)
+
         self.parent = parent
 
         self.msg_box = CompleteRegCtrl(self, -1, 'Сообщение', ico_folder)
         # info label
-        self.new_user = wx.StaticText(self, ID_TEXT_LABLE_LOG, label='Регистрация нового пользователя', pos=(35, 15))
+        self.new_user = wx.StaticText(self, ID_TEXT_LABLE_LOG, label='Регистрация нового пользователя', pos=RegisterLabelPos)
         self.new_user.SetForegroundColour('#77899A')
         self.new_user.SetFont((wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
 
         # error lables
         self.error_login = wx.StaticText(self, ID_ERROR_LOGIN, label='', pos=(115, 75))
         self.error_login.SetForegroundColour('#DE4421')
-        self.error_login.SetFont((wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+        self.error_login.SetFont((wx.Font(ErrorLabelFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
 
         self.error_psw = wx.StaticText(self, ID_ERROR_PSW, label='', pos=(115, 115))
         self.error_psw.SetForegroundColour('#DE4421')
-        self.error_psw.SetFont((wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+        self.error_psw.SetFont((wx.Font(ErrorLabelFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
 
         self.error_name = wx.StaticText(self, ID_ERROR_NAME, label='', pos=(115, 155))
         self.error_name.SetForegroundColour('#DE4421')
-        self.error_name.SetFont((wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+        self.error_name.SetFont((wx.Font(ErrorLabelFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
 
         self.error_email = wx.StaticText(self, ID_ERROR_EMAIL, label='', pos=(115, 195))
         self.error_email.SetForegroundColour('#DE4421')
-        self.error_email.SetFont((wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+        self.error_email.SetFont((wx.Font(ErrorLabelFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
 
         # inputs
         self.login_label = wx.StaticText(self, ID_TEXT_LABLE_LOG, label='Логин', pos=(60, 55))
@@ -71,7 +87,7 @@ class RegisterWindow(wx.Frame):
         self.accept_button = wx.Button(self, id=ID_BUTTON_REG, label='Отправить', pos=(110, 225))
         self.accept_button.SetBackgroundColour('#BFD8DF')
         self.accept_button.SetForegroundColour("#2F4D57")
-        self.accept_button.SetFont((wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+        self.accept_button.SetFont((wx.Font(SendButtonFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
         self.cancel_button = wx.Button(self, id=ID_BUTTON_EXIT, label='Выйти', pos=(205, 225))
 
         # preloader
@@ -80,9 +96,9 @@ class RegisterWindow(wx.Frame):
         self.preloader.Hide()
 
         # form settings
-        size = (400, 270)
         self.SetSize(size)
         self.icon = wx.Icon(ico_folder+'/icons/app.ico', wx.BITMAP_TYPE_ICO)
+        self.Center()
         self.SetIcon(self.icon)
 
         self.Bind(wx.EVT_CLOSE, self.OnHide)
