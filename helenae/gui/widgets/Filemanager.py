@@ -281,9 +281,14 @@ class FileManager(wx.Frame):
     def OnSize(self, event):
         size = self.GetSize()
         self.files_folder.ResizeColumns(size.x)
-        if not hasattr(self, 'sb'):
+        cwd = os.getcwd()
+        try:
+            self.sb.SetStatusText(cwd)
+        except AttributeError:
             self.sb = self.CreateStatusBar()
-        self.sb.SetStatusText(os.getcwd())
+            self.sb.SetStatusText(cwd)
+        except wx.PyDeadObjectError:
+            pass
         event.Skip()
 
 if __name__ == '__main__':
