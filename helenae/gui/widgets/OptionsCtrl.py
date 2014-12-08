@@ -7,6 +7,8 @@ import string
 from InputDialogCtrl import InputDialog
 from validators.KeyValidator import KeyValidator
 
+import platform
+
 ID_NOTEBOOK_CTRL = 2000
 ID_BUTTON_SAVE = 2001
 ID_BUTTON_CANCEL_SAVE = 2002
@@ -21,26 +23,42 @@ ID_TAB_ONE_INPUT_CRYPT_BUTTON = 2008
 class TabPanelBasics(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent, id=ID_TAB_ONE)
+
+        # Mac OS X
+        if platform.system() == 'Darwin':
+            ComboBoxPos = (175, 10)
+            InputTextCtrlPos = (145, 45)
+            InputButtonPos = (365, 40)
+            ErrorLabelFontSize = 10
+            ErrorLabelPos =(15, 105)
+        # Windows/Linux
+        else:
+            ComboBoxPos = (160, 10)
+            InputTextCtrlPos = (130, 40)
+            InputButtonPos = (350, 40)
+            ErrorLabelFontSize = 7
+            ErrorLabelPos =(15, 155)
+
         self.parent = parent
 
         self.LabelCrypto = wx.StaticText(self, label='Алгоритм шифрования:', pos=(15, 15))
 
         self.crypto = ['AES-256',]
-        self.ComboBox = wx.ComboBox(self, choices=self.crypto, style=wx.CB_READONLY, pos=(160, 10), value=self.crypto[0])
+        self.ComboBox = wx.ComboBox(self, choices=self.crypto, style=wx.CB_READONLY, pos=ComboBoxPos, value=self.crypto[0])
 
         self.LabelUserFolder = wx.StaticText(self, label='Текущий каталог:', pos=(15, 45))
-        self.InputUserFolder = wx.TextCtrl(self, ID_TAB_ONE_INPUT_USER_FOLDER, size=(214, -1), pos=(130, 40), style=wx.TE_READONLY)
+        self.InputUserFolder = wx.TextCtrl(self, ID_TAB_ONE_INPUT_USER_FOLDER, size=(214, -1), pos=InputTextCtrlPos, style=wx.TE_READONLY)
         self.InputUserFolder.SetBackgroundColour('#D9D9D9')
-        self.InputButton = wx.Button(self, id=ID_TAB_ONE_INPUT_USER_BUTTON, label='..', size=(25, 23), pos=(350, 40))
+        self.InputButton = wx.Button(self, id=ID_TAB_ONE_INPUT_USER_BUTTON, label='..', size=(25, 23), pos=InputButtonPos)
 
         self.LabelCryptPassword= wx.StaticText(self, label='Ключ шифрования:', pos=(15, 75))
-        self.InputCryptPassword = wx.TextCtrl(self, ID_TAB_ONE_INPUT_CRYPT_PSW, size=(214, -1), pos=(130, 70), style=wx.TE_READONLY)
+        self.InputCryptPassword = wx.TextCtrl(self, ID_TAB_ONE_INPUT_CRYPT_PSW, size=(214, -1), pos=(InputTextCtrlPos[0], InputTextCtrlPos[1]+30), style=wx.TE_READONLY)
         self.InputCryptPassword.SetBackgroundColour('#D9D9D9')
-        self.InputButton = wx.Button(self, id=ID_TAB_ONE_INPUT_CRYPT_BUTTON, label='..', size=(25, 23), pos=(350, 70))
+        self.InputButton = wx.Button(self, id=ID_TAB_ONE_INPUT_CRYPT_BUTTON, label='..', size=(25, 23), pos=(InputButtonPos[0], InputButtonPos[1]+30))
 
-        self.error_login = wx.StaticText(self, label='В случае удаления файла с настройками, ключ шифрования будет\nтакже утерян! Пожалуйста, сохраните где-нибудь ключ шифрования!', pos=(15, 155))
+        self.error_login = wx.StaticText(self, label='В случае удаления файла с настройками, ключ шифрования будет\nтакже утерян! Пожалуйста, сохраните где-нибудь ключ шифрования!', pos=ErrorLabelPos)
         self.error_login.SetForegroundColour('#DE4421')
-        self.error_login.SetFont((wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+        self.error_login.SetFont((wx.Font(ErrorLabelFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
 
         self.FolderDialog = wx.DirDialog(self, "Выберите каталог для хранения файлов", "", wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
 
@@ -88,7 +106,21 @@ class OptionsCtrl(wx.Frame):
         Frame that holds all other widgets
     """
     def __init__(self, parent, id, title, ico_folder):
-        wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
+
+        if platform.system():
+            wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE &
+                                                             ~ (wx.RESIZE_BORDER | wx.RESIZE_BOX | wx.MAXIMIZE_BOX))
+            DefaultBorderSave = 249
+            DefaultBorderCancel = 10
+            ButtonCancelFlags = wx.LEFT ^ wx.BOTTOM
+            size = (440, 265)
+            self.SetSize(size)
+        else:
+            wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
+            DefaultBorderSave = 214
+            DefaultBorderCancel = 5
+            ButtonCancelFlags = wx.LEFT
+
         self.parent = parent
         self.ico_folder = ico_folder
 
@@ -106,8 +138,8 @@ class OptionsCtrl(wx.Frame):
         self.sizer_h = wx.BoxSizer(wx.HORIZONTAL)
         self.accept_button = wx.Button(self.panel, id=ID_BUTTON_SAVE, label='Сохранить')
         self.cancel_button = wx.Button(self.panel, id=ID_BUTTON_CANCEL_SAVE, label='Отмена')
-        self.sizer_h.Add(self.accept_button, 0, wx.LEFT, border=214)
-        self.sizer_h.Add(self.cancel_button, 0, wx.LEFT, border=5)
+        self.sizer_h.Add(self.accept_button, 0, wx.LEFT, border=DefaultBorderSave)
+        self.sizer_h.Add(self.cancel_button, 0, ButtonCancelFlags, border=DefaultBorderCancel)
         self.sizer.AddSizer(self.sizer_h)
 
         # events
@@ -125,6 +157,7 @@ class OptionsCtrl(wx.Frame):
 
         self.__setUserFolder()
         self.createUsersFolder()
+        self.Center()
 
     def generateKey(self):
         key = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for x in xrange(32))

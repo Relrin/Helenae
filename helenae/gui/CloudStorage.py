@@ -8,6 +8,8 @@ from widgets.Filemanager import FileManager, ID_EXIT
 from widgets.validators.LoginValidator import LoginValidator
 from widgets.validators.PasswordValidator import PasswordValidator
 
+import platform
+
 ID_BUTTON_ACCEPT = 700
 ID_BUTTON_CANCEL = 701
 ID_TEXT_INPUT_LOG = 702
@@ -23,7 +25,22 @@ ID_PRELOADER = 709
 class CloudStorage(wx.Frame):
 
     def __init__(self, parent, id, title, ico_folder):
-        wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
+
+        # Mac OS X
+        if platform.system() == 'Darwin':
+            wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE &
+                                                             ~ (wx.RESIZE_BORDER | wx.RESIZE_BOX | wx.MAXIMIZE_BOX))
+            DefaultButtonFontSize = 12
+            DefaultErrorLabelFontSize = 9
+            LinkFontSize = 10
+            size = (310, 180)
+        # Windows/Linux
+        else:
+            wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
+            DefaultButtonFontSize = 8
+            DefaultErrorLabelFontSize = 7
+            LinkFontSize = 8
+            size = (310, 150)
 
         # widgets
         self.RegisterWindow = RegisterWindow(self, -1, 'Создание аккаунта', ico_folder)
@@ -40,17 +57,17 @@ class CloudStorage(wx.Frame):
         # error labels
         self.error_login = wx.StaticText(self, ID_ERROR_USER, label='', pos=(75, 35))
         self.error_login.SetForegroundColour('#DE4421')
-        self.error_login.SetFont((wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+        self.error_login.SetFont((wx.Font(DefaultErrorLabelFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
 
         self.error_psw = wx.StaticText(self, ID_ERROR_PSW, label='', pos=(75, 75))
         self.error_psw.SetForegroundColour('#DE4421')
-        self.error_psw.SetFont((wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+        self.error_psw.SetFont((wx.Font(DefaultErrorLabelFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
 
         # buttons
         self.accept_button = wx.Button(self, id=ID_BUTTON_ACCEPT, label='Войти', pos=(15, 95))
         self.accept_button.SetBackgroundColour('#BFD8DF')
         self.accept_button.SetForegroundColour("#2F4D57")
-        self.accept_button.SetFont((wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
+        self.accept_button.SetFont((wx.Font(DefaultButtonFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
         self.cancel_button = wx.Button(self, id=ID_BUTTON_CANCEL, label='Отмена', pos=(110, 95))
 
         # hyperlink to register
@@ -58,7 +75,7 @@ class CloudStorage(wx.Frame):
         self.new_member_label.EnableRollover(True)
         self.new_member_label.SetUnderlines(False, False, True)
         self.new_member_label.AutoBrowse(False)
-        self.new_member_label.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
+        self.new_member_label.SetFont(wx.Font(LinkFontSize, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
 
         # preloader
         self.preloader = wx.animate.AnimationCtrl(self, ID_PRELOADER, pos=(260, 97), size=(24, 24))
@@ -74,11 +91,10 @@ class CloudStorage(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnExit, id=ID_EXIT)  # exit through menu
         self.Bind(wx.EVT_BUTTON, self.OnExit, id=ID_EXIT)  # exit from button in ButtonBox
 
-        # form settings
-        size = (310, 150)
         self.SetSize(size)
         self.icon = wx.Icon(ico_folder + '/icons/app.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(self.icon)
+        self.Center()
         self.Show()
 
     def PreloaderPlay(self):
