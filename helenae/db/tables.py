@@ -1,7 +1,8 @@
 from time import gmtime, strftime
 
 from sqlalchemy import create_engine
-from sqlalchemy import Integer, DateTime, Float, Boolean, String, Column, ForeignKey, Table
+from sqlalchemy import Integer, DateTime, Float, Boolean, String, Column, \
+    ForeignKey, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -21,7 +22,8 @@ class Users(Base):
     group_id = Column(Integer, ForeignKey('group.id'), index=True)
     filespace_id = Column(Integer, ForeignKey('filespace.id'), index=True)
 
-    def __init__(self, name, fullname, password, email, sub_time_left, acctype, group, fs):
+    def __init__(self, name, fullname, password, email, sub_time_left, acctype,
+                 group, fs):
         self.name = name
         self.fullname = fullname
         self.password = password
@@ -32,9 +34,10 @@ class Users(Base):
         self.filespace_id = fs
 
     def __repr__(self):
-        return "<User('%s','%s','%s','%s','%s','%d','%d')>" % (self.name, self.fullname, self.password, self.email,
-                                                               self.subscription_time_left, self.acctype_id,
-                                                               self.group_id)
+        return "<User('%s','%s','%s','%s'," \
+               "'%s','%d','%d')>" % (self.name, self.fullname, self.password,
+                                     self.email, self.subscription_time_left,
+                                     self.acctype_id, self.group_id)
 
     # Flask-Login integration
     def is_authenticated(self):
@@ -67,21 +70,38 @@ class AccountType(Base):
         self.description = description
 
     def __repr__(self):
-        return "<AccountType('%s','%.3f','%s')>" % (self.name, self.cost, self.description)
+        return "<AccountType('%s','%.3f','%s')>" % (self.name, self.cost,
+                                                    self.description)
+
+
+class Permission(Base):
+    __tablename__ = 'permission'
+    id = Column(Integer, primary_key=True)
+    description = Column(String, unique=True)
+
+    def __init__(self, descr="unknown"):
+        self.description = descr
+
+
+m2m_group_permision = Table('m2m_group_permission', Base.metadata,
+                            Column('id', Integer, primary_key=True),
+                            Column('group_id', Integer,
+                                   ForeignKey('group.id')),
+                            Column('permission_id', Integer,
+                                   ForeignKey('permission.id')))
 
 
 class Group(Base):
     __tablename__ = 'group'
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
-    permission = Column(Integer, nullable=False)
+    permissions = relationship("Permission", secondary=m2m_group_permision)
 
-    def __init__(self, name="unknown", permission=0):
+    def __init__(self, name="unknown"):
         self.name = name
-        self.permission = permission
 
     def __repr__(self):
-        return "<Group('%s','%s')>" % (self.name, self.permission)
+        return "<Group('%s')>" % self.name
 
 
 class FileSpace(Base):
@@ -98,7 +118,8 @@ class FileSpace(Base):
             self.catalog_id.append(catalog)
 
     def __repr__(self):
-        return "<FileSpace('%s','%s','%s')>" % (self.id, self.storage_name, self.created_time)
+        return "<FileSpace('%s','%s','%s')>" % (self.id, self.storage_name,
+                                                self.created_time)
 
 
 class Catalog(Base):
@@ -116,14 +137,16 @@ class Catalog(Base):
         self.public_folder = public_folder
 
     def __repr__(self):
-        return "<Catalog('%s','%s','%s')>" % (self.directory_name, self.last_modified, self.public_folder)
+        return "<Catalog('%s','%s','%s')>" % (self.directory_name,
+                                              self.last_modified,
+                                              self.public_folder)
 
 
-association_table = Table('m2m_file_server', Base.metadata,
-                          Column('id', Integer, primary_key=True),
-                          Column('file_id', Integer, ForeignKey('file.id')),
-                          Column('fileserver_id', Integer, ForeignKey('fileserver.id'))
-                          )
+m2m_file_server = Table('m2m_file_server', Base.metadata,
+                        Column('id', Integer, primary_key=True),
+                        Column('file_id', Integer, ForeignKey('file.id')),
+                        Column('fileserver_id', Integer,
+                               ForeignKey('fileserver.id')))
 
 
 class File(Base):
@@ -136,9 +159,10 @@ class File(Base):
     chunk_size = Column(Integer, nullable=False)
     chunk_number = Column(Integer, nullable=False)
     catalog_id = Column(Integer, ForeignKey("catalog.id"))
-    server_id = relationship("FileServer", secondary=association_table)
+    server_id = relationship("FileServer", secondary=m2m_file_server)
 
-    def __init__(self, orig_name, serv_name, file_hash, user_path, chunk_size, chunk_number, catalog_id):
+    def __init__(self, orig_name, serv_name, file_hash, user_path, chunk_size,
+                 chunk_number, catalog_id):
         self.original_name = orig_name
         self.server_name = serv_name
         self.file_hash = file_hash
@@ -148,7 +172,10 @@ class File(Base):
         self.catalog_id = catalog_id
 
     def __repr__(self):
-        return "<File('%s','%s','%s','%d')>" % (self.original_name, self.server_name, self.file_hash, self.chunk_size)
+        return "<File('%s','%s','%s','%d')>" % (self.original_name,
+                                                self.server_name,
+                                                self.file_hash,
+                                                self.chunk_size)
 
 
 class FileServer(Base):
@@ -166,4 +193,6 @@ class FileServer(Base):
         self.last_online = strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
     def __repr__(self):
-        return "<FileServer('%s','%d','%s','%s')>" % (self.ip, self.port, self.status, self.last_online)
+        return "<FileServer('%s','%d','%s','%s')>" % (self.ip, self.port,
+                                                      self.status,
+                                                      self.last_online)

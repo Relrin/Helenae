@@ -79,8 +79,8 @@ class AccountTypeAdmin(sqla.ModelView):
 
 
 class GroupAdmin(sqla.ModelView):
-    form_columns = ['name', 'permission']
-    column_filters = ('name', 'permission')
+    form_columns = ['name', 'permissions']
+    column_filters = ('name', 'permissions')
 
     def is_accessible(self):
         return login.current_user.is_authenticated()
