@@ -13,9 +13,11 @@ from forms import RegisterForm
 def index():
     return render_template('index.html', title=u"Главная")
 
+
 @app.route('/success', methods=('GET', 'POST'))
 def success():
     return render_template('success.html', title=u"Регистрация завершена!")
+
 
 @app.route('/sign-up', methods=('GET', 'POST'))
 def sign_up():
@@ -31,24 +33,35 @@ def sign_up():
         new_fs = dbTables.FileSpace(fs_name, new_dir)
         db_connection.session.add(new_fs)
         db_connection.session.commit()
-        fs = db_connection.session.execute(sqlalchemy.select([dbTables.FileSpace]).where(dbTables.FileSpace.storage_name == fs_name))
+        fs = db_connection.session.execute(
+            sqlalchemy.select([dbTables.FileSpace])
+                      .where(dbTables.FileSpace.storage_name == fs_name))
         fs = fs.fetchone()
-        time_is = datetime.datetime.strptime(strftime("%d.%m.%Y", gmtime()), "%d.%m.%Y").date()
+        time_is = datetime.datetime.strptime(strftime("%d-%m-%Y", gmtime()),
+                                             "%d-%m-%Y").date()
         time_is = time_is + datetime.timedelta(days=365)
-        date_max = time_is.strftime("%d.%m.%Y")
-        id_new = db_connection.session.execute(sqlalchemy.func.count(dbTables.Users.id)).fetchone()[0] + 1
-        password_hash = str(sha256(form.data['password']+str(id_new)).hexdigest())
+        date_max = time_is.strftime("%Y-%m-%d")
+        id_new = db_connection.session.execute(
+            sqlalchemy.func.count(dbTables.Users.id)
+        ).fetchone()[0] + 1
+        password_hash = str(sha256(form.data['password'] +
+                                   str(id_new)).hexdigest())
         # create new user
-        new_user = dbTables.Users(form.data['login'], form.data['fullname'], password_hash, form.data['email'], date_max, 1, 2, fs.id)
+        new_user = dbTables.Users(form.data['login'], form.data['fullname'],
+                                  password_hash, form.data['email'],
+                                  date_max, 1, 2, fs.id)
         db_connection.session.add(new_user)
         db_connection.session.commit()
         return redirect(url_for('success'))
     return render_template('sign-up.html', title=u"Регистрация", form=form)
 
+
 @app.route('/sign-in', methods=('GET', 'POST'))
 def sign_in():
     return render_template('sign-in.html', title=u"Аутентификация")
 
+
 @app.route('/forgot-password', methods=('GET', 'POST'))
 def forgot_password():
-    return render_template('forgot-password.html', title=u"Восстановление доступа")
+    return render_template('forgot-password.html', title=u"Восстановление "
+                                                         u"доступа")
