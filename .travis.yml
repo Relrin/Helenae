@@ -14,13 +14,14 @@ before_install:
 # we need to "imitate" a monitor
 # more info: http://about.travis-ci.org/docs/user/gui-and-headless-browsers/
   - "export DISPLAY=:99.0"
-  - "sh -e /etc/init.d/xvfb start" 
-install:
-  - "pip install -r requirements.txt"
-  - "pip install ."
+  - "sh -e /etc/init.d/xvfb start"
 # install dependencies
 install: 
   - pip install -r requirements.txt
+before_script:
+  - ENV=`python -c "import sys; print sys.prefix"`
+  - PYTHON=`python -c "import sys; print sys.real_prefix"`/bin/python
+  - export PYTHONHOME=$ENV
 # run tests via pytest
 script: 
   - python ./tests/runtests.py
