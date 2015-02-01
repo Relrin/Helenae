@@ -2,13 +2,16 @@
 import os
 import wx
 import pytest
+import time
+
+UI_TIME_SLEEP = 2.0
 
 from helenae.gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
 from helenae.gui.widgets.RegisterCtrl import ID_BUTTON_REG
 from helenae.gui.widgets.Filemanager import ID_EXIT
 from helenae.gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
 
-@pytest.yield_fixture(scope="function", autouse=True)
+@pytest.yield_fixture(scope="module", autouse=True)
 def wxMainApp():
     app = wx.App(False)
 
@@ -58,7 +61,7 @@ def wxMainApp():
         frame.Bind(wx.EVT_BUTTON, FakeExit, id=ID_EXIT)
         frame.Bind(wx.EVT_BUTTON, FakeCompleteRegister, id=ID_BUTTON_CLOSE_MSG)
 
-    pathIconsFolder = os.path.abspath('..') + '/helenae/gui'
+    pathIconsFolder = os.path.abspath('..') + '/Helenae/helenae/gui'
     app._frame = CloudStorage(None, -1, 'Testing wxPython app', pathIconsFolder)
     initBindings(app._frame)
     app._frame.Show()

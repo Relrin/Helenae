@@ -184,14 +184,23 @@ class OptionsCtrl(wx.Frame):
 
     def createUsersFolder(self):
         if not os.path.exists(self.userFolder):
-            os.makedirs(self.userFolder)
+            try:
+                os.makedirs(self.userFolder)
+            except OSError:
+                pass
         if not os.path.exists(self.tmpFolder):
-            os.makedirs(self.tmpFolder)
+            try:
+                os.makedirs(self.tmpFolder)
+            except OSError:
+                pass
 
     def checkUserFolder(self):
         userFolder = self.notebook.tabBasicPreferences.InputUserFolder.GetValue() + '/'
         if not os.path.exists(userFolder):
-            os.makedirs(userFolder)
+            try:
+                os.makedirs(userFolder)
+            except OSError:
+                pass
 
     def createOptionsFile(self):
         if not os.path.exists(self.userOptionsPath):
