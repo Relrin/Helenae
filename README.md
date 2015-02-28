@@ -16,6 +16,15 @@ Using
 - wxPython
 - PyCrypto
 
+Implemented features
+-------
+- opening/writing/transfering file or catalog
+- rename/remove file or catalog
+- synchronization files
+- encryption by AES-256
+- console/GUI clients
+- supporting multiple file servers
+
 Running
 -------
 
