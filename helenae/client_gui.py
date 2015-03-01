@@ -6,15 +6,17 @@
 """
 import os
 import shutil
-from json import loads, dumps, dump
+from json import loads, dumps
 from random import randint
 from subprocess import Popen, PIPE, STDOUT
+from optparse import OptionParser
 
 import wx
 from twisted.internet import wxreactor
 wxreactor.install()
 
 from twisted.internet import reactor, ssl, threads
+
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
 from utils.jsonConstructor import constructDataClient, dumpConfigToJSON
@@ -24,7 +26,8 @@ from utils.filesystem import getFileList
 
 from gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
 from gui.widgets.Filemanager import ID_BUTTON_WRITE, ID_WRITE, ID_BUTTON_REMOVE_FILE, ID_REMOVE, \
-    ID_BUTTON_RENAME, ID_RENAME, ID_BUTTON_TRANSFER, ID_REPLACE
+    ID_BUTTON_RENAME, ID_RENAME, ID_BUTTON_TRANSFER, ID_REPLACE, ID_CREATE_LINK, ID_COPY_FILE_LINK, \
+    ID_EXIT, ID_FOLDER
 from gui.widgets.RegisterCtrl import ID_BUTTON_REG
 from gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
 from gui.widgets.InputDialogCtrl import InputDialog
@@ -33,6 +36,7 @@ from gui.widgets.validators.ValidatorMsgDlg import ValidatorMsgDialog as MsgDlg
 
 # TODO: Add event handlers for Twisted
 # TODO: Add login/registration/options/about window
+
 
 class GUIClientProtocol(WebSocketClientProtocol):
 
@@ -52,6 +56,8 @@ class GUIClientProtocol(WebSocketClientProtocol):
         handlers['DELT'] = self.__DELT
         handlers['RENF'] = self.__RENF
         handlers['REPF'] = self.__REPF
+        handlers['CRLN'] = self.__CRLN
+        handlers['LINK'] = self.__LINK
         # continues operations...
         handlers['RAUT'] = self.__RAUT
         handlers['RREG'] = self.__RREG
@@ -59,6 +65,8 @@ class GUIClientProtocol(WebSocketClientProtocol):
         handlers['CWRT'] = self.__CWRT
         handlers['CDLT'] = self.__CDLT
         handlers['CREN'] = self.__CREN
+        handlers['CCLN'] = self.__CCLN
+        handlers['CLNK'] = self.__CLNK
         return handlers
 
     def initBindings(self):
@@ -78,6 +86,10 @@ class GUIClientProtocol(WebSocketClientProtocol):
         # replace file/folder
         self.gui.Bind(wx.EVT_BUTTON, self.__REPF, id=ID_BUTTON_TRANSFER)
         self.gui.Bind(wx.EVT_MENU, self.__REPF, id=ID_REPLACE)
+        # create link on file
+        self.gui.Bind(wx.EVT_MENU, self.__CRLN, id=ID_CREATE_LINK)
+        # download file by link
+        self.gui.Bind(wx.EVT_MENU, self.__LINK, id=ID_COPY_FILE_LINK)
 
     def __SendInfoToFileServer(self, json_path, ip, port):
         p = Popen(["python", "./fileserver_client.py", str(json_path), str(ip), str(port)], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
@@ -131,6 +143,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
             self.gui.FileManager.files_folder.setUsersDir(pathToUserFolder)
             self.gui.FileManager.files_folder.showFilesInDirectory(self.gui.FileManager.files_folder.currentDir)
             self.gui.FileManager.sb.SetStatusText(pathToUserFolder)
+            self.gui.FileManager.SetMenuBar(self.gui.FileManager.menuBar)
             self.gui.FileManager.Show()
             self.login = data['user']
             data = dumps({'cmd': 'GETF', 'user': data['user'], 'auth': True, 'error': []})
@@ -200,7 +213,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 wx.PostEvent(self.gui, evt)
 
         for name, path, file_id, servers in data['files_read']:
-                threads.deferToThread(defferedReadFile, data['user_id'], name, path, file_id, servers)
+            threads.deferToThread(defferedReadFile, data['user_id'], name, path, file_id, servers)
         del data['files_read']
         del data['user_id']
 
@@ -344,9 +357,10 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 rnm_files = []
                 currentDir = self.gui.FileManager.files_folder.currentDir
                 defaultDir = self.gui.FileManager.files_folder.defaultDir
-                dlg = InputDialog(self.gui, -1, "Введите новое имя файла или каталога", self.gui.FileManager.ico_folder, RenameValidator())
-                dlg.ShowModal()
-                if dlg.result is not None:
+                filename = os.path.splitext(selectedItems[0])[0]
+                dlg = InputDialog(self.gui.FileManager, -1, "Введите новое имя файла или каталога",
+                                  self.gui.FileManager.ico_folder, RenameValidator(), filename)
+                if dlg.ShowModal() == wx.ID_OK:
                     file_path = currentDir + selectedItems[0]
                     if os.path.isfile(file_path):
                         path, file = os.path.split(file_path)
@@ -381,16 +395,60 @@ class GUIClientProtocol(WebSocketClientProtocol):
                                 full_old_folder = old_folder.replace(defaultDir, '') + '/'
                                 rnm_files.append((filename, full_old_folder, file_hash, filename, full_new_folder))
                         os.rename(file_path, new_folder_path)
-                data = dumps({'cmd': 'RENF', 'user': self.login, 'auth': True, 'error': [], 'rename_files': rnm_files})
-                self.sendMessage(data, sync=True)
+                    data = dumps({'cmd': 'RENF', 'user': self.login, 'auth': True, 'error': [], 'rename_files': rnm_files})
+                    self.sendMessage(data, sync=True)
             except OSError:
-                    wx.MessageBox("Такое имя файла или каталога уже существует!", "Сообщение")
+                wx.MessageBox("Такое имя файла или каталога уже существует!", "Сообщение")
 
     def __CREN(self, data):
-        msg_dlg = MsgDlg(None, "Задача выполнена успешно!")
-        msg_dlg.ShowModal()
+        wx.MessageBox("Задача выполнена успешно!", "Сообщение")
         evt = UpdateFileListCtrlEvent()
         wx.PostEvent(self.gui, evt)
+
+    def __CRLN(self, event):
+        """
+            Create link on file
+        """
+        selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
+        if len(selectedItems) != 1:
+            wx.MessageBox("Для создания общедоступной ссылки необходимо выбрать файл!", "Сообщение")
+        else:
+            key = self.gui.FileManager.options_frame.getCryptoKey()
+            defaultDir = self.gui.FileManager.files_folder.defaultDir
+            currentDir = self.gui.FileManager.files_folder.currentDir
+            path = os.path.normpath(currentDir + selectedItems[0])
+            if os.path.isfile(path):
+                relative_path = currentDir.replace(defaultDir, "")
+                file_hash, size = md5_for_file(path)
+                file_info = (selectedItems[0], file_hash, relative_path, key)
+                data = dumps({'cmd': 'CRLN', 'user': self.login, 'auth': True, 'error': [],
+                              'file_info': file_info, 'description': ''})
+                self.sendMessage(data)
+            else:
+                wx.MessageBox("Для создания общедоступной ссылки необходимо выбрать файл!", "Сообщение")
+
+    def __CCLN(self, data):
+        """
+            Showing for user him created link (of course, if previous operation successfull)
+        """
+        if data['url'] is None:
+            wx.MessageBox(data['error'][0], "Ошибка")
+        else:
+            wx.MessageBox("Ваша ссылка на файл:\n{0}".format(data['url']), "Сообщение")
+        del data['error']
+        del data['url']
+
+    def __LINK(self, event):
+        """
+            Send request for download file by link
+        """
+        pass
+
+    def __CLNK(self, data):
+        """
+            Downloading file by link from another file storage
+        """
+        pass
 
     def __REPF(self, event):
         """
@@ -450,6 +508,10 @@ class GUIClientProtocol(WebSocketClientProtocol):
     def onUpdateListCtrl(self, event):
         self.gui.FileManager.files_folder.showFilesInDirectory(self.gui.FileManager.files_folder.currentDir)
 
+    # there will be onRightClick method, which shows popup menu for clicked
+    # on element in FileListCtrl
+    # def onRightClick(self, event):
+
     def onOpen(self):
         self.factory._proto = self
         self.gui = self.factory._app._frame
@@ -468,20 +530,26 @@ class GUIClientProtocol(WebSocketClientProtocol):
 
 class GUIClientFactory(WebSocketClientFactory):
 
-   protocol = GUIClientProtocol
+    protocol = GUIClientProtocol
 
-   def __init__(self, url, app):
-      WebSocketClientFactory.__init__(self, url)
-      self._app = app
-      self._proto = None
+    def __init__(self, url, app):
+        WebSocketClientFactory.__init__(self, url)
+        self._app = app
+        self._proto = None
 
 
 if __name__ == '__main__':
+
+    parser = OptionParser()
+    parser.add_option("-i", "--ip", dest = "ip", help = "The WebSocket IP", default = "localhost")
+    parser.add_option("-p", "--port", dest = "port", help = "The WebSocket port", default = "9000")
+    (options, args) = parser.parse_args()
+
     app = wx.App(0)
     app._factory = None
     app._frame = CloudStorage(None, -1, 'Авторизация', './gui/')
     reactor.registerWxApp(app)
-    host_url = "wss://%s:%s" % ("localhost", 9000)
+    host_url = "wss://%s:%s" % (options.ip, options.port)
     app._factory = GUIClientFactory(host_url, app)
 
     # SSL client context: using default
