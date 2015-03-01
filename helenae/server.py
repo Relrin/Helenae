@@ -89,6 +89,8 @@ class DFSServerProtocol(WebSocketServerProtocol):
         handlers['DELT'] = self.delete_file
         handlers['RNME'] = self.rename_file
         handlers['SYNC'] = self.fileSync
+        handlers['CRLN'] = self.create_link
+        handlers['LINK'] = self.download_by_link
         handlers['LIST'] = self.get_fs_structure
         # for gui app
         handlers['REAF'] = self.read_fs_all
@@ -398,6 +400,38 @@ class DFSServerProtocol(WebSocketServerProtocol):
         data['cmd'] = 'CREN'
         log.msg('[RENF] Rename files for User=%s has complete!' % (data['user']))
         del data['rename_files']
+        return data
+
+    def create_link(self, data):
+        log.msg("[CRLN] Create link on file for User=%s" % (data['user']))
+        if len(data['file_info']) == 4:
+            try:
+                filename, file_hash, relative_path, key = data['file_info']
+                description = data.get('description', '')
+                url = Queries.createLinkOnFile(data['user'], filename, file_hash,
+                                               relative_path, key, description)
+                data['url'] = url
+            except Exception, exc:
+                data['url'] = None
+                data['error'].append(exc.message)
+        data['cmd'] = 'CCLN'
+        del data['file_info']
+        del data['description']
+        return data
+
+    def download_by_link(self, data):
+        """
+            Return user connection info only by some link
+        """
+        log.msg("[CRLN] Return link on file for User=%s" % (data['user']))
+        # GUI application
+        if data['gui'] is True:
+            pass
+        # console appication
+        else:
+            pass
+        data['cmd'] = 'CLNK'
+        del data['gui']
         return data
 
     def onMessage(self, payload, isBinary):
