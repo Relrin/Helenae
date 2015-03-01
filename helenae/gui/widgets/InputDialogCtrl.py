@@ -5,11 +5,11 @@ import platform
 
 
 class InputDialog(wx.Dialog):
-    def __init__(self, parent, id, title, ico_folder, validator):
+    def __init__(self, parent, id, title, ico_folder, validator, field_text=''):
 
         if platform.system() == 'Darwin':
             wx.Dialog.__init__(self, parent, id, title, style=wx.DEFAULT_FRAME_STYLE &
-                                                              ~ (wx.RESIZE_BORDER | wx.RESIZE_BOX | wx.MAXIMIZE_BOX))
+                                                             ~ (wx.RESIZE_BORDER | wx.RESIZE_BOX | wx.MAXIMIZE_BOX))
             labelPos = (15, 15)
             fieldSize = (135, 20)
             fieldPos = (120, 15)
@@ -31,25 +31,27 @@ class InputDialog(wx.Dialog):
 
         # self.icon = wx.Icon(ico_folder + '/icons/app.ico', wx.BITMAP_TYPE_ICO)
         # self.SetIcon(self.icon)
-
         self.SetSize(size)
+        self.field.SetValue(field_text)
         self.result = None
         self.Center()
 
     def onOK(self, event):
         if self.field.GetValidator().Validate(self.field):
             self.result = self.field.GetValue()
+        self.EndModal(wx.ID_OK)
         self.Destroy()
 
     def onCancel(self, event):
         self.result = None
+        self.EndModal(wx.ID_CANCEL)
         self.Destroy()
+
 
 if __name__ =='__main__':
     from validators.FileValidator import FileValidator
     app = wx.App(0)
     ico_folder = '..'
     frame = InputDialog(None, -1, 'Ввод данных', ico_folder, FileValidator())
-    frame.Show()
+    res = frame.ShowModal()
     app.MainLoop()
-
