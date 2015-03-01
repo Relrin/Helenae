@@ -25,6 +25,7 @@ class RenameValidator(wx.PyValidator):
 
         if len(text) == 0:
             self.dlg = ValidatorMsgDialog(None, "Вы не может ввести такое имя файла или каталога!")
+            self.dlg.Centre()
             self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()

@@ -25,6 +25,7 @@ class PasswordValidator(wx.PyValidator):
 
         if len(text) < 6:
             self.dlg = ValidatorMsgDialog(None, "Пароль состоит минимум из 6 символов!")
+            self.dlg.Centre()
             self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()

@@ -26,6 +26,7 @@ class NameValidator(wx.PyValidator):
 
         if len(text) < 5:
             self.dlg = ValidatorMsgDialog(None, "Ф.И.О. состоит минимум из 5 символов!")
+            self.dlg.Centre()
             self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()
