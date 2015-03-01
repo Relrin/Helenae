@@ -25,6 +25,11 @@ Implemented features
 - console/GUI clients
 - supporting multiple file servers
 
+Screenshots:
+-------
+Client GUI:
+    ![alt text](https://raw.githubusercontent.com/Relrin/Helenae/master/screenshots/client_gui.png)
+
 Running
 -------
 
