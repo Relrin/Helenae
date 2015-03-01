@@ -160,6 +160,7 @@ class File(Base):
     chunk_number = Column(Integer, nullable=False)
     catalog_id = Column(Integer, ForeignKey("catalog.id"))
     server_id = relationship("FileServer", secondary=m2m_file_server)
+    link_id = relationship("Link")
 
     def __init__(self, orig_name, serv_name, file_hash, user_path, chunk_size,
                  chunk_number, catalog_id):
@@ -196,3 +197,17 @@ class FileServer(Base):
         return "<FileServer('%s','%d','%s','%s')>" % (self.ip, self.port,
                                                       self.status,
                                                       self.last_online)
+
+
+class Link(Base):
+    __tablename__ = 'link'
+    id = Column(Integer, primary_key=True)
+    url = Column(String(255), nullable=False, unique=True)
+    expire_date = Column(DateTime, nullable=False)
+    key = Column(String(255), nullable=False)
+    description = Column(String, nullable=True)
+    file_id = Column(Integer, ForeignKey('file.id'))
+
+    def __repr__(self):
+        return "<Link('%s', '%s', '%s')>" % (self.url, self.expire_date,
+                                             self.key)
