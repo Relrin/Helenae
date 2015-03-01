@@ -25,6 +25,7 @@ class KeyValidator(wx.PyValidator):
 
         if len(text) != 32:
             self.dlg = ValidatorMsgDialog(None, "Ключ шифрования должен состоять из 32 символов!")
+            self.dlg.Centre()
             self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()

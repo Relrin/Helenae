@@ -1,5 +1,6 @@
 import datetime
-from hashlib import sha256
+import os
+from hashlib import sha256, sha1
 from time import gmtime, strftime
 
 import sqlalchemy
@@ -8,7 +9,7 @@ from sqlalchemy import and_, func, asc
 from sqlalchemy.orm import sessionmaker
 
 from tables import File as FileTable
-from tables import Users, FileServer, FileSpace, Catalog
+from tables import Users, FileServer, FileSpace, Catalog, Link
 
 engine = sqlalchemy.create_engine('postgresql://user:password@localhost/csan', pool_size=20, max_overflow=0)
 Session = sessionmaker(bind=engine)
@@ -332,6 +333,33 @@ class Queries():
             print 'SQLAlchemy ERROR: Error occurs during SQL compilation'
         finally:
             session.close()
+
+    @staticmethod
+    def createLinkOnFile(user, filename, file_hash, relative_path, key, description=''):
+        session = Queries.createSession()
+        try:
+            file_record = session.query(FileTable).filter_by(
+                original_name=filename,
+                file_hash=file_hash,
+                user_path=relative_path
+            ).first()
+            normalized_path = os.path.normpath(relative_path)
+            hash_link = sha1('{0}/{1}/{2}'.format(filename,
+                                                  file_hash,
+                                                  datetime.datetime.now())
+            ).hexdigest()
+            url = 'http://127.0.0.1:8080/{0}/{1}/{2}'.format(user, normalized_path, hash_link)
+            expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
+            new_link = Link(url=url, expire_date=expire_date, key=key, description=description, file_id=file_record.id)
+            session.add(new_link)
+            session.commit()
+        except sqlalchemy.exc.ArgumentError:
+            print 'SQLAlchemy ERROR: Invalid or conflicting function argument is supplied'
+        except sqlalchemy.exc.CompileError:
+            print 'SQLAlchemy ERROR: Error occurs during SQL compilation'
+        finally:
+            session.close()
+        return url
 
     #-------------------------------------------------------------------------
 

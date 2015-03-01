@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 import wx
-import ntpath
 from ValidatorMsgDlg import ValidatorMsgDialog
 
 
@@ -14,10 +13,10 @@ class FileValidator(wx.PyValidator):
         return FileValidator()
 
     def TransferToWindow(self):
-        return True   # Prevent wxDialog from complaining.
+        return True   # Prevent wxDialog from complaining
 
     def TransferFromWindow(self):
-        return True   # Prevent wxDialog from complaining.
+        return True   # Prevent wxDialog from complaining
 
     def Validate(self, win):
         textCtrl = self.GetWindow()
@@ -25,11 +24,18 @@ class FileValidator(wx.PyValidator):
         text = text.translate(None, "~|*:'><?!@#^&%=+`$[]{}," + '"')
         text = os.path.normpath(text)
         text = os.path.normcase(text)
-        dirs, filename = ntpath.split(text)
-        text = os.path.normpath(dirs.replace('\\', '/')+"//"+filename)
+        dirs, filename = os.path.split(text)
+        dirs = dirs.replace('\\', '/')
+        if dirs.startswith('/'):
+            dirs = dirs[1:]
+        if len(dirs) > 0 and len(dirs.split('/')) >= 1:
+            text = os.path.normpath(dirs+"/"+filename)
+        else:
+            text = filename
 
-        if len(text) < 3:
+        if len(text) < 2:
             self.dlg = ValidatorMsgDialog(None, "Это поле не может быть пустым!")
+            self.dlg.Centre()
             self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()

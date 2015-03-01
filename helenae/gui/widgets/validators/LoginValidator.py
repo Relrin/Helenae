@@ -25,6 +25,7 @@ class LoginValidator(wx.PyValidator):
 
         if len(text) < 3:
             self.dlg = ValidatorMsgDialog(None, "Логин состоит минимум из 3 символов!")
+            self.dlg.Centre()
             self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()

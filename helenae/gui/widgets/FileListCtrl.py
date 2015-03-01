@@ -31,11 +31,16 @@ class FileListCtrl(wx.ListCtrl):
         self.currentDir = None
         self.defaultDir = None
         self.__path = ico_folder + '/icons/mimetypes/'
-        images = [ico_folder + '/icons/empty.png', ico_folder + '/icons/mimetypes/folder.png', ico_folder + '/icons/ui/up16.png']
+        images = [
+            ico_folder + '/icons/empty.png',
+            ico_folder + '/icons/mimetypes/folder.png',
+            ico_folder + '/icons/ui/up16.png'
+        ]
         types_icons = [self.__path + f for f in os.listdir(self.__path)]
         types_icons.sort()
         images += types_icons
-        self.supported_types = [f.replace(self.__path,'').replace('.png', '') for f in types_icons if not f.endswith('folder.png')]
+        self.supported_types = [f.replace(self.__path,'').replace('.png', '')
+                                for f in types_icons if not f.endswith('folder.png')]
 
         # information about file in columns
         self.InsertColumn(0, 'Имя')
@@ -70,7 +75,7 @@ class FileListCtrl(wx.ListCtrl):
         return self.defaultDir
 
     def insertUpDirectory(self):
-        #up from this folder to '..'
+        # up from this folder to '..'
         self.InsertStringItem(0, '..')
         self.SetItemImage(0, 2)
 
@@ -135,25 +140,30 @@ class FileListCtrl(wx.ListCtrl):
         self.SetColumnWidth(3, sizeX * 0.15)
 
     def getParentDir(self, dir):
-        return os.sep.join(dir.split(os.sep)[:-2]) + '/'
+        normalized_path_dir = os.path.normpath(dir) + '/'
+        return os.path.abspath(os.path.join(normalized_path_dir, os.pardir)) + '/'
 
     def onLeftClick(self, event):
         index = self.GetFirstSelected()
-        filepath = self.currentDir + self.getFullnameItem(index)
+        filepath = os.path.normpath(self.currentDir + self.getFullnameItem(index))
         if os.path.isdir(filepath):
+            filepath = filepath + '/'
             if self.GetItem(index, 0).GetText() == '..':
                 self.currentDir = self.getParentDir(self.currentDir)
                 filepath = self.currentDir
-                self.showFilesInDirectory(filepath)
             else:
-                self.currentDir = filepath + '/'
-                self.showFilesInDirectory(filepath)
-        else:
+                self.currentDir = filepath
+            self.showFilesInDirectory(filepath)
+        elif os.path.isfile(filepath):
             platform_os = platform.system()
             if platform_os == 'Linux':
-                os.system('xdg-open "%s"' % (filepath))
+                os.system('xdg-open "%s"' % filepath)
+            elif platform_os == 'Darwin':
+                os.system('open %s' % filepath)
             elif platform_os == 'Windows':
                 os.system('start "%s"')
+        else:
+            event.Skip()
 
     def getFullnameItem(self, index):
         item = self.GetItem(index, 0).GetText()

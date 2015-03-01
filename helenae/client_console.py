@@ -55,6 +55,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
         handlers['RNME'] = self.__RNME
         handlers['SYNC'] = self.__SYNC
         handlers['LIST'] = self.__LIST
+        handlers['CRLN'] = self.__CRLN
+        handlers['LINK'] = self.__LINK
         handlers['EXIT'] = self.__EXIT
         # continues operations...
         handlers['COWF'] = self.__COWF
@@ -63,6 +65,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
         handlers['CDLT'] = self.__CDLT
         handlers['CRNM'] = self.__CRNM
         handlers['CSYN'] = self.__CSYN
+        handlers['CCLN'] = self.__CCLN
+        handlers['CLNK'] = self.__CLNK
         # errors, bans, etc.
         handlers['CREG'] = self.__CREG
         handlers['RREG'] = self.__RREG
@@ -353,7 +357,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
         if self.__files is None:
             data = constructDataClient('AUTH', data['user'], data['password'], True,
-                                                "WARNING: Please, use LIST to get last cashe of your files from server...")
+                                        "WARNING: Please, use LIST to get last cashe of your files from server...")
         else:
             self.__filenumber = ''
             lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
@@ -424,9 +428,33 @@ class DFSClientProtocol(WebSocketClientProtocol):
         del data['file_path_src']
         return data
 
+    def __CRLN(self, data):
+        """
+            Create link on file
+        """
+        pass
+
+    def __CCLN(self, data):
+        """
+            Showing for user him created link (of course, if previous operation successfull)
+        """
+        pass
+
+    def __LINK(self, data):
+        """
+            Send request for download file by link
+        """
+        pass
+
+    def __CLNK(self, data):
+        """
+            Downloading file by link from another file storage
+        """
+        pass
+
     def clear_console(self):
         # clear console
-        if platform.system() == "Linux":
+        if platform.system() in ("Linux", "Darwin"):
             # its Linux/MacOS
             os.system('clear')
         else:
@@ -566,7 +594,7 @@ if __name__ == '__main__':
     parser.add_option("-p", "--port", dest = "port", help = "The WebSocket port", default = "9000")
     (options, args) = parser.parse_args()
 
-    host_url = "wss://%s:%s" % (options.ip, options.port)
+     host_url = "wss://%s:%s" % (options.ip, options.port)
     # create a WS server factory with our protocol
     factory = WebSocketClientFactory(host_url, debug = False)
     factory.protocol = DFSClientProtocol

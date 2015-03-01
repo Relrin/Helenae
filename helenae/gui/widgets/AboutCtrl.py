@@ -20,7 +20,7 @@ class About(wx.Frame):
         if platform.system() == 'Darwin':
             wx.Frame.__init__(self, parent, -1, title, style=wx.DEFAULT_FRAME_STYLE &
                                                              ~ (wx.RESIZE_BORDER | wx.RESIZE_BOX | wx.MAXIMIZE_BOX))
-            DefaultTxtFontSize = 13
+            DefaultTxtFontSize = 12
             DefaultAboutFontSize = 15
             DefaultLinkFontSize = 10
             size = (330, 220)
@@ -33,7 +33,7 @@ class About(wx.Frame):
             size = (300, 200)
 
         # lables, which contains some text
-        txt = """Распределенное файловое хранилище"""
+        txt = """   Многопользовательское распределённое\nприложение организации файлового обмена"""
         self.about_txt = wx.StaticText(self, id=ID_ABOUT_MAIN, label=txt, pos=(25,15))
         self.about_txt.SetFont(wx.Font(DefaultTxtFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0))
 
@@ -66,7 +66,7 @@ class About(wx.Frame):
         self.Center()
 
     def OnExit(self, event):
-        self.Close()
+        self.Hide()
 
 if __name__ =='__main__':
     app = wx.App(0)

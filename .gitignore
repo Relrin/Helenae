@@ -1,5 +1,6 @@
 *.pyc
 
+merge-info.txt
 /helenae/fs.json
 /helenae/fsc.json
 /helenae/service.log

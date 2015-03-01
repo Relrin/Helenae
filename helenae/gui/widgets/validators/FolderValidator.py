@@ -26,8 +26,9 @@ class FolderValidator(wx.PyValidator):
         text = os.path.normpath(text).replace('\\', '/')
         textCtrl.SetValue(text)
 
-        if len(text) < 3:
+        if len(text) < 0:
             self.dlg = ValidatorMsgDialog(None, "Это поле не может быть пустым!")
+            self.dlg.Centre()
             self.dlg.ShowModal()
             textCtrl.SetBackgroundColour("pink")
             textCtrl.SetFocus()
