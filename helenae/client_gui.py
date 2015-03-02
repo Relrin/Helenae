@@ -31,6 +31,7 @@ from gui.widgets.Filemanager import ID_BUTTON_WRITE, ID_WRITE, ID_BUTTON_REMOVE_
 from gui.widgets.RegisterCtrl import ID_BUTTON_REG
 from gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
 from gui.widgets.InputDialogCtrl import InputDialog
+from gui.widgets.InputLinkCtrl import InputLink
 from gui.widgets.validators.RenameValidator import RenameValidator
 from gui.widgets.validators.ValidatorMsgDlg import ValidatorMsgDialog as MsgDlg
 
@@ -432,7 +433,11 @@ class GUIClientProtocol(WebSocketClientProtocol):
             Showing for user him created link (of course, if previous operation successfull)
         """
         if data['url'] is None:
-            wx.MessageBox(data['error'][0], "Ошибка")
+            if data['error']:
+                wx.MessageBox(data['error'][0], "Ошибка")
+            else:
+                wx.MessageBox("Возможно, Вы патаетесть создать ссылку на файл, который еще на записан на сервера."
+                              "\nЗапишите его, а повторите данную операцию.", "Ошибка")
         else:
             wx.MessageBox("Ваша ссылка на файл:\n{0}".format(data['url']), "Сообщение")
         del data['error']
@@ -442,13 +447,41 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
             Send request for download file by link
         """
-        pass
+        dlg = InputLink(self.gui.FileManager, -1, "Введите ссылку", self.gui.FileManager.ico_folder)
+        if dlg.ShowModal() == wx.ID_OK:
+            data = dumps({'cmd': 'LINK', 'user': self.login, 'auth': True, 'error': [],
+                          'url': dlg.result})
+            self.sendMessage(data)
 
     def __CLNK(self, data):
         """
             Downloading file by link from another file storage
         """
-        pass
+        tmp_dir = self.gui.FileManager.options_frame.tmpFolder
+
+        def defferedDownloadByLink(user_id, save_in, filename, file_id, key, server):
+            src_file = os.path.normpath(save_in + '/' + filename)
+            server_ip = str(server[0][0])
+            server_port = str(server[0][1])
+            json_file = os.path.normpath(tmp_dir + '/fsc_link_' + self.login + '_' + filename + '_' + str(randint(0, 100000)) + '.json')
+            dumpConfigToJSON(json_file, "READU_FILE", user_id, file_id, src_file, key)
+            self.__SendInfoToFileServer(json_file, server_ip, server_port)
+            wx.MessageBox("Скачивание файла {0} завершено!".format(filename) , "Сообщение")
+
+        file_info = data.get('file_info', None)
+        if file_info:
+            file_id, filename, key, server = file_info
+            if file_id and filename and key and server:
+                dlg = wx.DirDialog(self.gui, "Укажите директорию в которую сохранить файл", style=wx.DD_DEFAULT_STYLE)
+                if dlg.ShowModal() == wx.ID_OK:
+                    save_in = dlg.GetPath()
+                    threads.deferToThread(defferedDownloadByLink, data['user_id'], save_in, filename, file_id, key, server)
+            else:
+                wx.MessageBox("Ссылка не корректна или файл удален!", "Ошибка")
+            del data['user_id']
+            del data['file_info']
+        else:
+            wx.MessageBox("Ссылка не корректна или файл удален!", "Ошибка")
 
     def __REPF(self, event):
         """
