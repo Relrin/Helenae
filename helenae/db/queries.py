@@ -5,7 +5,7 @@ from time import gmtime, strftime
 
 import sqlalchemy
 import sqlalchemy.exc
-from sqlalchemy import and_, func, asc
+from sqlalchemy import and_, func, asc, desc
 from sqlalchemy.orm import sessionmaker
 
 from tables import File as FileTable
@@ -260,6 +260,39 @@ class Queries():
             session.close()
         return file_db, file_servers
 
+    @staticmethod
+    def getFileServerByUserLink(link):
+        servers = []
+        user_id = server_filename = filename = key = None
+        session = Queries.createSession()
+        try:
+            link_record = session.execute(sqlalchemy.select([Link])
+                                                    .where(and_(Link.expire_date >= func.now(),
+                                                                Link.url==link))
+                                         ).fetchone()
+            if link_record:
+                file_record = session.query(FileTable).filter_by(id=link_record.file_id).first()
+                if file_record:
+                    server_record = Queries.getFileServer(file_record.file_hash)
+                    if server_record:
+                        # get user_id
+                        file_record = session.query(FileTable).filter_by(id=link_record.file_id).first()
+                        catalog = session.query(Catalog).filter_by(id=file_record.catalog_id).first()
+                        file_space = session.query(FileSpace).filter_by(id=catalog.fs_id).first()
+                        user_id = session.query(Users).filter_by(filespace_id=file_space.id).first().id
+                        # write any necessary data
+                        server_filename = file_record.server_name
+                        filename = file_record.original_name
+                        key = link_record.key
+                        servers.append(server_record)
+        except sqlalchemy.exc.ArgumentError:
+            print 'SQLAlchemy ERROR: Invalid or conflicting function argument is supplied'
+        except sqlalchemy.exc.CompileError:
+            print 'SQLAlchemy ERROR: Error occurs during SQL compilation'
+        finally:
+            session.close()
+        return user_id, server_filename, filename, key, servers
+
     #-------------------------------------------------------------------------
 
     @staticmethod
@@ -338,21 +371,35 @@ class Queries():
     def createLinkOnFile(user, filename, file_hash, relative_path, key, description=''):
         session = Queries.createSession()
         try:
+            url = None
             file_record = session.query(FileTable).filter_by(
-                original_name=filename,
-                file_hash=file_hash,
-                user_path=relative_path
+                    original_name=filename,
+                    file_hash=file_hash,
+                    user_path=relative_path
             ).first()
-            normalized_path = os.path.normpath(relative_path)
-            hash_link = sha1('{0}/{1}/{2}'.format(filename,
-                                                  file_hash,
-                                                  datetime.datetime.now())
-            ).hexdigest()
-            url = 'http://127.0.0.1:8080/{0}/{1}/{2}'.format(user, normalized_path, hash_link)
-            expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-            new_link = Link(url=url, expire_date=expire_date, key=key, description=description, file_id=file_record.id)
-            session.add(new_link)
-            session.commit()
+            if file_record is not None:
+                # copy this part into createLinkOnFile
+                link_record = session.execute(sqlalchemy.select([Link])
+                                                                .where(and_(Link.expire_date >= func.now(),
+                                                                            Link.file_id==file_record.id,
+                                                                            Link.key==key))
+                                                                .order_by(desc(Link.expire_date))
+                                             ).fetchone()
+                # this part of code means, that if we have actual link of file, then return her
+                if link_record:
+                    url = link_record.url
+                # else if all links are expired, then create new link on file
+                else:
+                    normalized_path = os.path.normpath(relative_path)
+                    hash_link = sha1('{0}/{1}/{2}'.format(filename,
+                                                          file_hash,
+                                                          datetime.datetime.now())
+                    ).hexdigest()
+                    url = 'http://127.0.0.1:8080/storage/{0}/{1}/{2}'.format(user, normalized_path, hash_link)
+                    expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
+                    new_link = Link(url=url, expire_date=expire_date, key=key, description=description, file_id=file_record.id)
+                    session.add(new_link)
+                    session.commit()
         except sqlalchemy.exc.ArgumentError:
             print 'SQLAlchemy ERROR: Invalid or conflicting function argument is supplied'
         except sqlalchemy.exc.CompileError:

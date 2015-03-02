@@ -3,27 +3,27 @@ import wx
 import platform
 
 
-class InputDialog(wx.Dialog):
-    def __init__(self, parent, id, title, ico_folder, validator, field_text=''):
+class InputLink(wx.Dialog):
+    def __init__(self, parent, id, title, ico_folder):
 
         if platform.system() == 'Darwin':
             wx.Dialog.__init__(self, parent, id, title, style=wx.DEFAULT_FRAME_STYLE &
                                                              ~ (wx.RESIZE_BORDER | wx.RESIZE_BOX | wx.MAXIMIZE_BOX))
-            labelPos = (15, 15)
-            fieldSize = (135, 20)
-            fieldPos = (120, 15)
-            size = (275, 105)
+            labelPos = (10, 15)
+            fieldSize = (180, 20)
+            fieldPos = (125, 15)
+            size = (320, 105)
         else:
             wx.Dialog.__init__(self, parent, id, title, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
-            labelPos = (15, 20)
-            fieldSize = (150, 20)
-            fieldPos = (105, 15)
-            size = (275, 80)
+            labelPos = (10, 20)
+            fieldSize = (195, 20)
+            fieldPos = (110, 15)
+            size = (320, 80)
 
-        self.label = wx.StaticText(self, label="Имя элемента:", pos=labelPos)
-        self.field = wx.TextCtrl(self, value="", size=fieldSize, pos=fieldPos, validator=validator)
-        self.button_ok = wx.Button(self, label="Ок", id=wx.ID_OK, pos=(75, 45))
-        self.button_cancel = wx.Button(self, label="Отмена", id=wx.ID_CANCEL, pos=(167, 45))
+        self.label = wx.StaticText(self, label="Ссылка на файл:", pos=labelPos)
+        self.field = wx.TextCtrl(self, value="", size=fieldSize, pos=fieldPos)
+        self.button_ok = wx.Button(self, label="Ок", id=wx.ID_OK, pos=(125, 45))
+        self.button_cancel = wx.Button(self, label="Отмена", id=wx.ID_CANCEL, pos=(217, 45))
 
         self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=wx.ID_CANCEL)
@@ -31,13 +31,11 @@ class InputDialog(wx.Dialog):
         # self.icon = wx.Icon(ico_folder + '/icons/app.ico', wx.BITMAP_TYPE_ICO)
         # self.SetIcon(self.icon)
         self.SetSize(size)
-        self.field.SetValue(field_text)
         self.result = None
         self.Center()
 
     def onOK(self, event):
-        if self.field.GetValidator().Validate(self.field):
-            self.result = self.field.GetValue()
+        self.result = self.field.GetValue()
         self.EndModal(wx.ID_OK)
         self.Destroy()
 
@@ -48,9 +46,8 @@ class InputDialog(wx.Dialog):
 
 
 if __name__ =='__main__':
-    from validators.FileValidator import FileValidator
     app = wx.App(0)
     ico_folder = '..'
-    frame = InputDialog(None, -1, 'Ввод данных', ico_folder, FileValidator())
+    frame = InputLink(None, -1, 'Введите ссылку', ico_folder)
     res = frame.ShowModal()
     app.MainLoop()

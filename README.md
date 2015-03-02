@@ -16,7 +16,7 @@ Using
 - wxPython
 - PyCrypto
 
-Implemented features
+Features
 -------
 - opening/writing/transfering file or catalog
 - rename/remove file or catalog
@@ -24,6 +24,7 @@ Implemented features
 - encryption by AES-256
 - console/GUI clients
 - supporting multiple file servers
+- shared files between users (via creating links)
 
 Screenshots:
 -------
@@ -33,7 +34,7 @@ Client GUI:
 Running
 -------
 
-For start working with distributed file storage you will need:  
+For start working with distributed file storage you will need:
 1) Run the server.py by doing
 
     python server.py [port]
@@ -46,11 +47,11 @@ For start working with distributed file storage you will need:
 3) Open in your browser
 
     https://localhost:8080/
-    
+
 or run the Python console client
 
     python client_console.py [port]
-    
+
 or run the Python GUI client
 
     python client_gui.py

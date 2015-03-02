@@ -415,23 +415,28 @@ class DFSServerProtocol(WebSocketServerProtocol):
                 data['url'] = None
                 data['error'].append(exc.message)
         data['cmd'] = 'CCLN'
+        log.msg('[CRLN] Create link on file for User=%s has complete!' % (data['user']))
         del data['file_info']
         del data['description']
         return data
 
     def download_by_link(self, data):
         """
-            Return user connection info only by some link
+            Return to user connection info only by some link
         """
-        log.msg("[CRLN] Return link on file for User=%s" % (data['user']))
-        # GUI application
-        if data['gui'] is True:
-            pass
-        # console appication
-        else:
-            pass
+        log.msg("[LINK] Return file servers on file for User=%s" % (data['user']))
+        servers = []
+        user_id = server_filename = filename = key = None
+        link = data.get('url', None)
+        if link:
+            user_db, server_filename, filename, key, servers = Queries.getFileServerByUserLink(link)
+            if user_db:
+                user_id = 'u' + str(user_db).rjust(14, '0')
+        data['user_id'] = user_id
+        data['file_info'] = (server_filename, filename, key, servers)
         data['cmd'] = 'CLNK'
-        del data['gui']
+        log.msg("[LINK] Return file servers on file for User=%s" % (data['user']))
+        del data['url']
         return data
 
     def onMessage(self, payload, isBinary):
