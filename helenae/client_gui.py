@@ -422,8 +422,8 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 relative_path = currentDir.replace(defaultDir, "")
                 file_hash, size = md5_for_file(path)
                 file_info = (selectedItems[0], file_hash, relative_path, key)
-                data = dumps({'cmd': 'CRLN', 'user': self.login, 'auth': True, 'error': [],
-                              'file_info': file_info, 'description': ''})
+                data = constructDataClient('CRLN', self.login, '', True, error='',
+                                           file_info=file_info, description='')
                 self.sendMessage(data)
             else:
                 wx.MessageBox("Для создания общедоступной ссылки необходимо выбрать файл!", "Сообщение")
@@ -436,7 +436,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
             if data['error']:
                 wx.MessageBox(data['error'][0], "Ошибка")
             else:
-                wx.MessageBox("Возможно, Вы патаетесть создать ссылку на файл, который еще на записан на сервера."
+                wx.MessageBox("Возможно, Вы патаетесь создать ссылку на файл, который еще на записан на сервера."
                               "\nЗапишите его, а повторите данную операцию.", "Ошибка")
         else:
             wx.MessageBox("Ваша ссылка на файл:\n{0}".format(data['url']), "Сообщение")
@@ -449,8 +449,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
         dlg = InputLink(self.gui.FileManager, -1, "Введите ссылку", self.gui.FileManager.ico_folder)
         if dlg.ShowModal() == wx.ID_OK:
-            data = dumps({'cmd': 'LINK', 'user': self.login, 'auth': True, 'error': [],
-                          'url': dlg.result})
+            data = constructDataClient('LINK', self.login, '', True, error='', url=dlg.result)
             self.sendMessage(data)
 
     def __CLNK(self, data):
