@@ -29,11 +29,9 @@ Features
 Screenshots:
 -------
 Console application:  
-
     ![alt text](https://raw.githubusercontent.com/Relrin/Helenae/master/screenshots/client_console.png)
 
 Client GUI:  
-
     ![alt text](https://raw.githubusercontent.com/Relrin/Helenae/master/screenshots/client_gui.png)
 
 Running
