@@ -13,7 +13,7 @@ from twisted.internet import reactor, ssl
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
 from utils import commands
-from utils.jsonConstructor import constructDataClient
+from utils.jsonConstructor import constructDataClient, dumpConfigToJSON
 from utils.convertSize import convertSize
 from utils.crypto.md5 import md5_for_file
 
@@ -36,6 +36,10 @@ class DFSClientProtocol(WebSocketClientProtocol):
         self.__servers = servers
         self.__files = files
         self.__user_ids = user_ids
+        # ------------------
+        self.servers_ = servers
+        self.files_ = files
+        self.users_ids = user_ids
 
     def __clearCashe(self):
         self.__servers = None
@@ -172,7 +176,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
         if self.__files is None:
             data = constructDataClient('AUTH', data['user'], data['password'], True,
-                                                "WARNING: Please, use LIST to get last cashe of your files from server...")
+                                       "WARNING: Please, use LIST to get last cashe of your files from server...")
         else:
             self.__filenumber = ''
             lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
@@ -208,7 +212,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 print 'Enter path to file, which using to store information:'
                 file_path = raw_input('Path:')
                 file_format = file_path.split('/')[-1].split('.')[-1]
-                if len(file_format[0]) == 0:
+                if len(file_format) == 0:
                     file_path = ''
                 if file_format != file_format_db:
                     file_path = ''
@@ -234,7 +238,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
         if self.__files is None:
             data = constructDataClient('AUTH', data['user'], data['password'], True,
-                                                "WARNING: Please, use LIST to get last cashe of your files from server...")
+                                       "WARNING: Please, use LIST to get last cashe of your files from server...")
         else:
             self.__filenumber = ''
             lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
@@ -282,7 +286,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
         if self.__files is None:
             data = constructDataClient('AUTH', data['user'], data['password'], True,
-                                                "WARNING: Please, use LIST to get last cashe of your files from server...")
+                                       "WARNING: Please, use LIST to get last cashe of your files from server...")
         else:
             self.__filenumber = ''
             lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
@@ -308,7 +312,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
                 if file_format != file_format_db:
                      new_name = ''
             data = constructDataClient('RNME', data['user'], data['password'], True,
-                                                file_id=file_id, new_name=new_name)
+                                       file_id=file_id, new_name=new_name)
         return data
 
     def __CRNM(self, data):
@@ -432,25 +436,106 @@ class DFSClientProtocol(WebSocketClientProtocol):
         """
             Create link on file
         """
-        pass
+        if self.__files is None:
+            data = constructDataClient('AUTH', data['user'], data['password'], True,
+                                       "WARNING: Please, use LIST to get last cashe of your files from server...")
+        else:
+
+            self.__filenumber = ''
+            lst_file_numbers = [str(number+1) for number, file_fs in enumerate(self.__files)]
+            # get file number
+            while self.__filenumber not in lst_file_numbers:
+                self.clear_console()
+                self.print_storage_files()
+                self.__filenumber = self.inputFileNumber()
+            self.__filenumber = int(self.__filenumber) - 1
+            # prepare data from JSON request
+
+            file_id = str(self.__files[self.__filenumber].original_name)
+            # get path to file
+            file_path = ''
+            file_format_db = file_id.split('.')[-1]
+            # checking entered path by user
+            while file_path == '':
+                self.clear_console()
+                print 'NOTE: file shall be have equals format!'
+                print 'Enter full path to file, which stored information:'
+                file_path = raw_input('Path:')
+                file_format = file_path.split('/')[-1].split('.')[-1]
+                if len(file_format) == 0:
+                    file_path = ''
+                if file_format != file_format_db:
+                    file_path = ''
+                if not os.path.exists(file_path):
+                    file_path = ''
+                self.clear_console()
+            relative_path = str(self.__files[self.__filenumber].user_path)
+            file_hash, size = md5_for_file(file_path)
+            key = self.__input_password()
+            file_info = (file_id, file_hash, relative_path, key)
+            data = constructDataClient('CRLN', data['user'], '', True, error='',
+                                       file_info=file_info, description='')
+        return data
 
     def __CCLN(self, data):
         """
             Showing for user him created link (of course, if previous operation successfull)
         """
-        pass
+        if data['url'] is None:
+            if data['error']:
+                print "ERROR: {0}".format(data['error'][0])
+            else:
+                print "You're tried to create link on file, which not loaded on servers yet."
+                print "Please, load him and try again..."
+        else:
+            print "Your link on file:\n{0}".format(data['url'])
+        raw_input('Press "Enter" key to continue...')
+        data['error'] = []
+        del data['url']
+        return data
 
     def __LINK(self, data):
         """
             Send request for download file by link
         """
-        pass
+        link = raw_input("Link on file: ")
+        data = constructDataClient('LINK', data['user'], '', True, error='', url=link)
+        return data
 
     def __CLNK(self, data):
         """
             Downloading file by link from another file storage
         """
-        pass
+        tmp_dir = os.curdir
+        file_info = data.get('file_info', None)
+        if file_info:
+            file_id, filename, key, server = file_info
+            if file_id and filename and key and server:
+                file_path = ''
+                while file_path == '':
+                    self.clear_console()
+                    print 'NOTE: file shall be have equals format!'
+                    print 'Enter full path to folder, which will be store information:'
+                    file_path = raw_input('Path:')
+                    if not os.path.isdir(file_path):
+                        file_path = ''
+                    self.clear_console()
+
+                src_file = os.path.normpath(file_path + '/' + filename)
+                server_ip = str(server[0][0])
+                server_port = str(server[0][1])
+                json_file = os.path.normpath(tmp_dir + '/fsc_link_' + data['user_id'] + '_' + filename + '_' + str(randint(0, 100000)) + '.json')
+                dumpConfigToJSON(json_file, "READU_FILE", data['user_id'], file_id, src_file, key)
+                self.__SendInfoToFileServer(json_file, server_ip, server_port)
+                print "Downloading file by link has complete..."
+            else:
+                print "ERROR: Link is broken or file has deteled!"
+            del data['user_id']
+            del data['file_info']
+        else:
+            print "ERROR: Link is broken or file has deteled!"
+        raw_input('Press "Enter" key to continue...')
+        return data
 
     def clear_console(self):
         # clear console
@@ -561,7 +646,7 @@ class DFSClientProtocol(WebSocketClientProtocol):
         # for authorized users commands
         else:
             self.clear_console()
-            if data['cmd'] in ['COWF', 'CLST', 'CREA', 'CDLT', 'CRNM', 'CSYN']:
+            if data['cmd'] in ['COWF', 'CLST', 'CREA', 'CDLT', 'CRNM', 'CSYN', 'CCLN', 'CLNK']:
                 continue_cmd = data['cmd']
                 self.commands_handlers[continue_cmd](data)
             if data['error']:
@@ -573,7 +658,8 @@ class DFSClientProtocol(WebSocketClientProtocol):
             print "Current user: %s" % (data['user'])
             self.mainMenu()
             cmd = ''
-            while cmd not in self.commands.keys() + ['COWF', 'CLST', 'CREA', 'CDLT', 'CRNM', 'CSYN']:
+            while cmd not in self.commands.keys() + ['COWF', 'CLST', 'CREA', 'CDLT',
+                                                     'CRNM', 'CSYN', 'CCLN', 'CLNK']:
                 cmd = raw_input('Command: ').upper()
                 # not realized function? --> try enter next command and print error
                 if (cmd not in self.commands.keys() or (self.commands_handlers[cmd] is None)):
@@ -594,7 +680,7 @@ if __name__ == '__main__':
     parser.add_option("-p", "--port", dest = "port", help = "The WebSocket port", default = "9000")
     (options, args) = parser.parse_args()
 
-     host_url = "wss://%s:%s" % (options.ip, options.port)
+    host_url = "wss://%s:%s" % (options.ip, options.port)
     # create a WS server factory with our protocol
     factory = WebSocketClientFactory(host_url, debug = False)
     factory.protocol = DFSClientProtocol
