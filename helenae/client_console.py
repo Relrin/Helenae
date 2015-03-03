@@ -36,10 +36,6 @@ class DFSClientProtocol(WebSocketClientProtocol):
         self.__servers = servers
         self.__files = files
         self.__user_ids = user_ids
-        # ------------------
-        self.servers_ = servers
-        self.files_ = files
-        self.users_ids = user_ids
 
     def __clearCashe(self):
         self.__servers = None
