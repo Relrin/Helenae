@@ -35,7 +35,7 @@ Client GUI:
 Running
 -------
 
-For start working with distributed file storage you will need:
+For start working with distributed file storage you will need:  
 1) Run the server.py by doing
 
     python server.py [port]
