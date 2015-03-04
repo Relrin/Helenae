@@ -44,6 +44,13 @@ For start working with distributed file storage you will need:
 
     # take example of fs.json
     python fileserver.py [path_to_config.json] [port]
+ 
+path_to_config.json its configuration file for fileserver.py, which contains:
+- path its to place, where all files will be stored
+- base_dir its just name for basic directory, which using for creating with "path" argument 
+- server_ip means IP-address of this computer, which get access to connecting new users
+- server_port means port, which listening server for connected users 
+- debug means flag, which sending information about fileserver to server (by default its shall be false)
 
 3) Open in your browser
 
@@ -56,6 +63,8 @@ or run the Python console client
 or run the Python GUI client
 
     python client_gui.py [port]
+    
+NOTE: by default client applications using port=9000
 
 Creating Server Keys and Certificates
 -------------------------------------
