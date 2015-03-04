@@ -18,8 +18,7 @@ Using
 
 Features
 -------
-- opening/writing/transfering file or catalog
-- rename/remove file or catalog
+- opening/writing/renaming/removing/transfering file or catalog
 - synchronization files
 - encryption by AES-256
 - console/GUI clients
@@ -56,7 +55,7 @@ or run the Python console client
 
 or run the Python GUI client
 
-    python client_gui.py
+    python client_gui.py [port]
 
 Creating Server Keys and Certificates
 -------------------------------------
