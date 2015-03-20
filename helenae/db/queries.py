@@ -315,9 +315,7 @@ class Queries():
                                  .where(FileSpace.storage_name == filestorage_name)
             )
             fs = fs.fetchone()
-            time_is = datetime.datetime.strptime(strftime("%d.%m.%Y", gmtime()), "%d.%m.%Y").date()
-            time_is = time_is + datetime.timedelta(days=365)
-            date_max = time_is.strftime("%d.%m.%Y")
+            date_max = datetime.datetime.now() + datetime.timedelta(days=365)
             id_new = session.execute(func.count(Users.id)).fetchone()[0] + 1
             password_hash = str(sha256(password+str(id_new)).hexdigest())
             new_user = Users(username, fullname, password_hash, email, date_max, 1, 2, fs.id)

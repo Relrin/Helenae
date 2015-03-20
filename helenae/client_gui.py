@@ -579,7 +579,7 @@ if __name__ == '__main__':
 
     app = wx.App(0)
     app._factory = None
-    app._frame = CloudStorage(None, -1, 'Авторизация', './gui/')
+    app._frame = CloudStorage(None, -1, 'Аутентификация', './gui/')
     reactor.registerWxApp(app)
     host_url = "wss://%s:%s" % (options.ip, options.port)
     app._factory = GUIClientFactory(host_url, app)
