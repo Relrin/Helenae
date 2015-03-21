@@ -70,7 +70,7 @@ class TabPanelBasics(wx.Panel):
            self.InputUserFolder.SetValue(self.FolderDialog.GetPath())
 
     def InputCryptoKey(self, event):
-        dlg = InputDialog(self, -1, 'Введите ключ шифования', self.parent.parent.ico_folder, KeyValidator())
+        dlg = InputDialog(self, -1, 'Введите ключ шифования', self.parent.parent.ico_folder, KeyValidator(), lable_name='Значение ключа')
         dlg.ShowModal()
         if dlg.result is not None:
             self.InputCryptPassword.SetValue(dlg.result)
