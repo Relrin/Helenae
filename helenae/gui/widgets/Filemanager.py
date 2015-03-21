@@ -53,7 +53,7 @@ class FileManager(wx.Frame):
         # file frame
         self.files_folder = FileListCtrl(self, -1, ico_folder)
         # options frame
-        self.options_frame = OptionsCtrl(self, -1, "Опции", ico_folder)
+        self.options_frame = OptionsCtrl(self, -1, "Параметры", ico_folder)
         # about frame
         self.about_frame = About(self, -1, 'О программе', ico_folder)
 
@@ -221,7 +221,7 @@ class FileManager(wx.Frame):
         self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
 
     def OnCreateFolder(self, event):
-        dlg = InputDialog(self, -1, 'Введите каталог', self.ico_folder, FolderValidator())
+        dlg = InputDialog(self, -1, 'Введите имя каталога', self.ico_folder, FolderValidator())
         if dlg.ShowModal() == wx.ID_OK:
             try:
                 new_folder = self.files_folder.currentDir + dlg.result
