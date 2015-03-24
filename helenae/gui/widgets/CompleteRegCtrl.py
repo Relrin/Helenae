@@ -26,7 +26,7 @@ class CompleteRegCtrl(wx.Frame):
         # lables, which contains some text
         self.txt = wx.StaticText(self, id=ID_LABLE_TEXT_INFO, label="После перезапуска приложения Вы", pos=(60, 25))
         self.txt.SetFont(wx.Font(DefaultTxtSizeFont, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
-        self.txt = wx.StaticText(self, id=ID_LABLE_TEXT_INFO, label="можете авторизироваться", pos=(85, 40))
+        self.txt = wx.StaticText(self, id=ID_LABLE_TEXT_INFO, label="можете выполнить аутентификацию", pos=(57, 40))
         self.txt.SetFont(wx.Font(DefaultTxtSizeFont, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
 
         # buttons
