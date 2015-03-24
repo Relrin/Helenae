@@ -44,7 +44,7 @@ class CloudStorage(wx.Frame):
 
         # widgets
         self.RegisterWindow = RegisterWindow(self, -1, 'Создание аккаунта', ico_folder)
-        self.FileManager = FileManager(self, -1, 'CloudStorage', ico_folder)
+        self.FileManager = FileManager(self, -1, 'Многопользовательское распределённое приложение организации файлового обмена', ico_folder)
 
         # inputs
         self.login_label = wx.StaticText(self, ID_TEXT_LABLE_LOG, label='Логин', pos=(15, 15))
