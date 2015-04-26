@@ -6,7 +6,7 @@ from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 
 from utils import rsync
-from utils.crypto import aes
+from utils.crypto.aes import AES_wrapper
 
 CONFIG_TEMPLATE = ''
 CONFIG_DATA = {}
@@ -29,15 +29,18 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
         self.delta_sync = None # changes in files as delta
         self.result_cmd = ""
         self.commands_handlers = self.__initHandlersUser()
+        self.crypto_classes = self.__initCryptoHandlers()
         user_id = CONFIG_DATA['user']
         operation_name = CONFIG_DATA['cmd']
         file_id = CONFIG_DATA['file_id']
         src_file = CONFIG_DATA['src_file']
+        self.algorithm = CONFIG_DATA['algorithm']
         data = '[' + str(user_id) + ':' + str(operation_name) + ':' + str(file_id) + ':' + str(CONFIG_PASSWORD) + ']'
         # get data for write operations
         if operation_name in ('WRITE_FILE', 'WSYNC_FILE'):
+            crypto_object = self.getCryptoObject()
             with open(src_file, "rb") as in_file:
-                for chunk in aes.encrypt(in_file, str(CONFIG_PASSWORD), key_length=32):
+                for chunk in crypto_object.encrypt(in_file, str(CONFIG_PASSWORD), key_length=32):
                     data += chunk
         self.sendMessage(data, isBinary=True, sync=True)
 
@@ -51,6 +54,19 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
         handlers['SYC'] = self.print_payload
         return handlers
 
+    def __initCryptoHandlers(self):
+        # TODO: Add there Twofish and Serpent wrappers
+        handlers = {}
+        handlers['AES-256'] = AES_wrapper
+        handlers['Twofish'] = None
+        handlers['Serpent'] = None
+        return handlers
+
+    def getCryptoObject(self):
+        if self.algorithm not in self.crypto_classes.keys():
+            raise NotImplementedError('Algorithm {} not implemented!'.format(self.algorithm))
+        return self.crypto_classes[self.algorithm]()
+
     def stop_and_delete_config(self):
         os.remove(CONFIG_TEMPLATE)
         reactor.stop()
@@ -62,9 +78,10 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
     def read_command(self, payload):
         if self.result_cmd == 'C':
             try:
+                crypto_object = self.getCryptoObject()
                 text = payload[8:]
                 with open(CONFIG_DATA['src_file'], 'wb') as out_file:
-                    for chunk in aes.decrypt(text, str(CONFIG_PASSWORD), key_length=32):
+                    for chunk in crypto_object.decrypt(text, str(CONFIG_PASSWORD), key_length=32):
                         out_file.write(chunk)
             except IOError, e:
                 print e
@@ -85,9 +102,11 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
 
                 new_file = CONFIG_DATA['src_file'] + '.new'
                 swap_path = CONFIG_DATA['src_file'] + '~'
+
+                crypto_object = self.getCryptoObject()
                 text = payload[8:]
                 with open(swap_path, 'wb') as out_file:
-                    for chunk in aes.decrypt(text, str(CONFIG_PASSWORD), key_length=32):
+                    for chunk in crypto_object.decrypt(text, str(CONFIG_PASSWORD), key_length=32):
                         out_file.write(chunk)
 
                 patchedfile = open(swap_path, "rb")
