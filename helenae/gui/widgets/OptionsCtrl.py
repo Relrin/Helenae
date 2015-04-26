@@ -43,7 +43,7 @@ class TabPanelBasics(wx.Panel):
 
         self.LabelCrypto = wx.StaticText(self, label='Алгоритм шифрования:', pos=(15, 15))
 
-        self.crypto = ['AES-256',]
+        self.crypto = ['AES-256', 'Twofish', 'Serpent']
         self.ComboBox = wx.ComboBox(self, choices=self.crypto, style=wx.CB_READONLY, pos=ComboBoxPos, value=self.crypto[0])
 
         self.LabelUserFolder = wx.StaticText(self, label='Текущий каталог:', pos=(15, 45))

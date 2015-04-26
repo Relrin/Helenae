@@ -29,55 +29,55 @@ def derive_key_and_iv(password, salt, key_length, iv_length):
     return d[:key_length], d[key_length:key_length+iv_length]
 
 
-def encrypt(in_file, password, key_length=32):
-    """
-        Encrypt file
+class AES_wrapper:
 
-        :param in_file: file descriptor to file
-        :param password: its your secret key
-        :param key_length: length of secret key
-        :return: encrypted chunks
-    """
-    bs = AES.block_size
-    salt = Random.new().read(bs - len('Salted__'))
-    key, iv = derive_key_and_iv(password, salt, key_length, bs)
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    yield ('Salted__' + salt)
-    finished = False
-    while not finished:
-        chunk = in_file.read(1024 * bs)
-        if len(chunk) == 0 or len(chunk) % bs != 0:
-            padding_length = (bs - len(chunk) % bs) or bs
-            chunk += padding_length * chr(padding_length)
-            finished = True
-        yield cipher.encrypt(chunk)
+    def encrypt(self, in_file, password, key_length=32):
+        """
+            Encrypt file
 
+            :param in_file: file descriptor to file
+            :param password: its your secret key
+            :param key_length: length of secret key
+            :return: encrypted chunks
+        """
+        bs = AES.block_size
+        salt = Random.new().read(bs - len('Salted__'))
+        key, iv = derive_key_and_iv(password, salt, key_length, bs)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        yield ('Salted__' + salt)
+        finished = False
+        while not finished:
+            chunk = in_file.read(1024 * bs)
+            if len(chunk) == 0 or len(chunk) % bs != 0:
+                padding_length = (bs - len(chunk) % bs) or bs
+                chunk += padding_length * chr(padding_length)
+                finished = True
+            yield cipher.encrypt(chunk)
 
-def decrypt(text, password, key_length=32):
-    """
-        Decrypt file
+    def decrypt(self, text, password, key_length=32):
+        """
+            Decrypt file
 
-        :param in_file: file descriptor to encrypted file
-        :param password: its your secret key
-        :param key_length: length of secret key
-        :return: decrypted chunks
-    """
-    bs = AES.block_size
-    salt = (text[:bs])[len('Salted__'):]
-    text = text[bs:]
-    key, iv = derive_key_and_iv(password, salt, key_length, bs)
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    next_chunk = ''
-    finished = False
-    counter_block = 1
-    while not finished:
-        start = (counter_block - 1) * 1024 * bs
-        end = counter_block * 1024 * bs
-        chunk, next_chunk = next_chunk, cipher.decrypt(text[start:end])
-        if len(next_chunk) == 0:
-            padding_length = ord(chunk[-1])
-            chunk = chunk[:-padding_length]
-            finished = True
-        counter_block += 1
-        yield chunk
-
+            :param in_file: file descriptor to encrypted file
+            :param password: its your secret key
+            :param key_length: length of secret key
+            :return: decrypted chunks
+        """
+        bs = AES.block_size
+        salt = (text[:bs])[len('Salted__'):]
+        text = text[bs:]
+        key, iv = derive_key_and_iv(password, salt, key_length, bs)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        next_chunk = ''
+        finished = False
+        counter_block = 1
+        while not finished:
+            start = (counter_block - 1) * 1024 * bs
+            end = counter_block * 1024 * bs
+            chunk, next_chunk = next_chunk, cipher.decrypt(text[start:end])
+            if len(next_chunk) == 0:
+                padding_length = ord(chunk[-1])
+                chunk = chunk[:-padding_length]
+                finished = True
+            counter_block += 1
+            yield chunk
