@@ -30,10 +30,11 @@ def constructDataClient(cmd, user, hash_password, auth, error='', **kwargs):
     return dumps(data)
 
 
-def dumpConfigToJSON(json_file, cmd, user_id, file_id, src_file, key):
+def dumpConfigToJSON(json_file, cmd, user_id, file_id, src_file, key, algorithm='AES-256'):
     """
         Write config to JSON file
     """
     with open(json_file, 'w+') as f:
-        dict_json = {"cmd": cmd, "user": user_id, "file_id": file_id, "src_file": src_file, "password": key}
+        dict_json = {"cmd": cmd, "user": user_id, "file_id": file_id, "src_file": src_file, "password": key,
+        "algorithm": algorithm}
         dump(dict_json, f)
