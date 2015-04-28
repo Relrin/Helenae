@@ -14,7 +14,7 @@ Using
 - Flask
 - pytest
 - wxPython
-- PyCrypto
+- PyCrypto with [python-cryptoplus](https://github.com/doegox/python-cryptoplus) extension
 
 Features
 -------

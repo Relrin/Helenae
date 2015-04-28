@@ -182,6 +182,9 @@ class OptionsCtrl(wx.Frame):
         self.parent.files_folder.showFilesInDirectory(pathToUserFolder)
         self.generateKey()
 
+    def getCryptoAlgorithm(self):
+        return self.notebook.tabBasicPreferences.ComboBox.GetValue()
+
     def createUsersFolder(self):
         if not os.path.exists(self.userFolder):
             try:
