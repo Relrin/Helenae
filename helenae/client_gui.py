@@ -35,9 +35,6 @@ from gui.widgets.InputLinkCtrl import InputLink
 from gui.widgets.validators.RenameValidator import RenameValidator
 from gui.widgets.validators.ValidatorMsgDlg import ValidatorMsgDialog as MsgDlg
 
-# TODO: Add event handlers for Twisted
-# TODO: Add login/registration/options/about window
-
 
 class GUIClientProtocol(WebSocketClientProtocol):
 
@@ -193,6 +190,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
             Massive reading files from file storage, using threads in Twisted
         """
+        algorithm = self.gui.FileManager.options_frame.getCryptoAlgorithm()
         key = self.gui.FileManager.options_frame.getCryptoKey()
         tmp_dir = self.gui.FileManager.options_frame.tmpFolder
         user_folder = self.gui.FileManager.files_folder.getUsersDir()
@@ -208,7 +206,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 server_ip = str(ip)
                 server_port = str(port)
                 json_file = os.path.normpath(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
-                dumpConfigToJSON(json_file, "READU_FILE", user_id, file_id, src_file, key)
+                dumpConfigToJSON(json_file, "READU_FILE", user_id, file_id, src_file, key, algorithm)
                 self.__SendInfoToFileServer(json_file, server_ip, server_port)
                 evt = UpdateFileListCtrlEvent()
                 wx.PostEvent(self.gui, evt)
@@ -249,6 +247,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
             Multithreating write files to file servers
         """
+        algorithm = self.gui.FileManager.options_frame.getCryptoAlgorithm()
         key = self.gui.FileManager.options_frame.getCryptoKey()
         tmp_dir = self.gui.FileManager.options_frame.tmpFolder
 
@@ -258,7 +257,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
                 server_port = str(server[1])
                 src_file = os.path.normpath(path + '/' + name)
                 json_file = os.path.normpath(tmp_dir + '/fsc_' + self.login + '_' + name + '_' + str(randint(0, 100000)) + '.json')
-                dumpConfigToJSON(json_file, cmd, user_id, file_id, src_file, key)
+                dumpConfigToJSON(json_file, cmd, user_id, file_id, src_file, key, algorithm)
                 self.__SendInfoToFileServer(json_file, server_ip, server_port)
 
         for cmd, name, path, file_id, servers in data['files_write']:

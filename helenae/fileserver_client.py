@@ -69,7 +69,7 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
         return self.crypto_classes[self.algorithm]()
 
     def stop_and_delete_config(self):
-        #os.remove(CONFIG_TEMPLATE)
+        os.remove(CONFIG_TEMPLATE)
         reactor.stop()
 
     def print_payload(self, payload):
