@@ -32,6 +32,8 @@ commands_server = {
     , "RENF": "massive rename files"
     , "DELF": "massive delete files from storage"
     , "REPF": "replace files"
+    , "GETF": "getting all file info for GUI app"
+    , "LGUI": "download file by user link"
 }
 
 commands_handlers_user   = dict((key, None) for key in commands_user.keys())
