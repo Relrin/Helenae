@@ -3,7 +3,7 @@
 
     Example of using:
         import os
-        password = os.urandom(32).encode('hex')
+        password = os.urandom(16).encode('hex')
         crypto_object = Serpent_wrapper()
         in_filename = "test.txt"
         enc_filename = "enc.txt"
@@ -18,12 +18,12 @@
             with open(decoded_filename, 'wb') as out_file:
                 for chunk in crypto_object.decrypt(text, password, key_length=32):
                     out_file.write(chunk)
-    """
+"""
 
 from CryptoPlus.Cipher.python_Serpent import Serpent
 
 
-class Serpent_wrapper():
+class Serpent_wrapper:
 
     obj = None
     block_size = 16
@@ -34,17 +34,30 @@ class Serpent_wrapper():
         return self.obj
 
     def encrypt(self, in_file, password, key_length=32):
+        """
+            Encrypt file
+
+            :param in_file: file descriptor to file
+            :param password: its your secret key
+            :param key_length: length of secret key
+            :return: encrypted chunks
+        """
         cryptographer = self.get_Serpent_cls(password)
-        finished = False
-        while not finished:
+        while True:
             chunk = in_file.read(self.block_size)
             if not chunk:
                 break
-            if len(chunk) % self.block_size != 0:
-                finished = True
             yield cryptographer.encrypt(chunk)
 
     def decrypt(self, text, password, key_length=32):
+        """
+            Decrypt file
+
+            :param in_file: file descriptor to encrypted file
+            :param password: its your secret key
+            :param key_length: length of secret key
+            :return: decrypted chunks
+        """
         cryptographer = self.get_Serpent_cls(password)
         finished = False
         next_chunk = ''
