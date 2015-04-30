@@ -43,7 +43,7 @@ class TabPanelBasics(wx.Panel):
 
         self.LabelCrypto = wx.StaticText(self, label='Алгоритм шифрования:', pos=(15, 15))
 
-        self.crypto = ['AES-256', 'Twofish', 'Serpent']
+        self.crypto = ['AES-256', 'Serpent', 'Twofish']
         self.ComboBox = wx.ComboBox(self, choices=self.crypto, style=wx.CB_READONLY, pos=ComboBoxPos, value=self.crypto[0])
 
         self.LabelUserFolder = wx.StaticText(self, label='Текущий каталог:', pos=(15, 45))
@@ -225,7 +225,7 @@ class OptionsCtrl(wx.Frame):
     def writeUserSetting(self):
         import shelve
         shelve = shelve.open(self.userOptionsPath, writeback=True)
-        userFolder = self.notebook.tabBasicPreferences.InputUserFolder.GetValue() + '/'
+        userFolder = os.path.normpath(self.notebook.tabBasicPreferences.InputUserFolder.GetValue()) + '/'
         self.parent.sb.SetStatusText(userFolder)
         self.parent.files_folder.setCurrentDir(userFolder)
         self.parent.files_folder.setUsersDir(userFolder)
