@@ -8,6 +8,7 @@ from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientPr
 from utils import rsync
 from utils.crypto.aes import AES_wrapper
 from utils.crypto.serpent import Serpent_wrapper
+from utils.crypto.twofish import Twofish_wrapper
 
 CONFIG_TEMPLATE = ''
 CONFIG_DATA = {}
@@ -59,8 +60,8 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
         # TODO: Add there Twofish wrapper
         handlers = {}
         handlers['AES-256'] = AES_wrapper
-        handlers['Twofish'] = None
         handlers['Serpent'] = Serpent_wrapper
+        handlers['Twofish'] = Twofish_wrapper
         return handlers
 
     def getCryptoObject(self):
