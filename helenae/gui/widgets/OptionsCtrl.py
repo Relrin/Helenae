@@ -225,7 +225,7 @@ class OptionsCtrl(wx.Frame):
     def writeUserSetting(self):
         import shelve
         shelve = shelve.open(self.userOptionsPath, writeback=True)
-        userFolder = self.notebook.tabBasicPreferences.InputUserFolder.GetValue() + '/'
+        userFolder = os.path.normpath(self.notebook.tabBasicPreferences.InputUserFolder.GetValue()) + '/'
         self.parent.sb.SetStatusText(userFolder)
         self.parent.files_folder.setCurrentDir(userFolder)
         self.parent.files_folder.setUsersDir(userFolder)

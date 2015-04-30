@@ -60,19 +60,15 @@ class Twofish_wrapper:
             :return: decrypted chunks
         """
         cryptographer = self.get_Twofish_cls(password)
-        finished = False
         next_chunk = ''
         counter_block = 1
-        while not finished:
+        while True:
             start = (counter_block - 1) * self.block_size
             end = counter_block * self.block_size
             enc_txt = text[start:end]
             if not enc_txt:
-                finished = True
                 yield next_chunk.replace('\x00', '')
                 break
             chunk, next_chunk = next_chunk, cryptographer.decrypt(enc_txt)
-            if len(next_chunk) == 0:
-                finished = True
             counter_block += 1
             yield chunk.replace('\x00', '')
