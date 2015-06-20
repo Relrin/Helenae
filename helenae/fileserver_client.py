@@ -57,7 +57,6 @@ class MessageBasedClientProtocol(WebSocketClientProtocol):
         return handlers
 
     def __initCryptoHandlers(self):
-        # TODO: Add there Twofish wrapper
         handlers = {}
         handlers['AES-256'] = AES_wrapper
         handlers['Serpent'] = Serpent_wrapper

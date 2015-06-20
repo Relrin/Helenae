@@ -38,8 +38,6 @@ ID_TOOLBAR_REFRESH = 203
 ID_TOOLBAR_HELP = 204
 ID_TOOLBAR_ABOUT = 205
 
-# TODO: add handlers for buttons/menus/etc.
-# TODO: save JSON configs in temp folder
 # TODO: save part info (about catalog structure) in XML
 
 
@@ -53,34 +51,34 @@ class FileManager(wx.Frame):
         # file frame
         self.files_folder = FileListCtrl(self, -1, ico_folder)
         # options frame
-        self.options_frame = OptionsCtrl(self, -1, "Параметры", ico_folder)
+        self.options_frame = OptionsCtrl(self, -1, "Options", ico_folder)
         # about frame
-        self.about_frame = About(self, -1, 'О программе', ico_folder)
+        self.about_frame = About(self, -1, 'About', ico_folder)
 
         # menu
         filemenu= wx.Menu()
-        newItem = wx.MenuItem(filemenu, ID_NEW, "&Новый файл\tShift+1", help='Создать новый файл в каталоге')
+        newItem = wx.MenuItem(filemenu, ID_NEW, "&New file\tShift+1", help='Create new file in directory')
         newItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/new.png'))
-        createItem = wx.MenuItem(filemenu, ID_FOLDER, "&Создать каталог\tShift+2", help='Создать новый каталог')
+        createItem = wx.MenuItem(filemenu, ID_FOLDER, "&Create directory\tShift+2", help='Create new directory')
         createItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/folder.png'))
 
-        createLinkItem = wx.MenuItem(filemenu, ID_CREATE_LINK, "&Создать ссылку для файла\tF1", help='Создать ссылку для файла')
+        createLinkItem = wx.MenuItem(filemenu, ID_CREATE_LINK, "&Create shared link\tF1", help='Create link for chosen file')
         createLinkItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/link.png'))
-        copyFileByLinkItem = wx.MenuItem(filemenu, ID_COPY_FILE_LINK, "&Скачать файл по ссылке\tF2", help='Скачать файл по ссылке')
+        copyFileByLinkItem = wx.MenuItem(filemenu, ID_COPY_FILE_LINK, "&Download file by shared link\tF2", help='Download file by shared link')
         copyFileByLinkItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/download_cloud.png'))
 
-        copyFileItem = wx.MenuItem(filemenu, ID_COPY_FILE, "&Скопировать файл\tF3", help='Скопировать файл извне в текущий каталог')
+        copyFileItem = wx.MenuItem(filemenu, ID_COPY_FILE, "&Copy file\tF3", help='Copy file from outside to current directory')
         copyFileItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/copy_file.png'))
-        copyFolderItem = wx.MenuItem(filemenu, ID_COPY_FOLDER, "&Скопировать каталог\tF4", help='Скопировать каталог извне в текущий каталог')
+        copyFolderItem = wx.MenuItem(filemenu, ID_COPY_FOLDER, "&Copy directory\tF4", help='Copy directory from outside to current directory')
         copyFolderItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/copy_folder.png'))
 
-        writeItem = wx.MenuItem(filemenu, ID_WRITE, "&Запись\tCtrl+W", help='Записать выделенные файлы')
+        writeItem = wx.MenuItem(filemenu, ID_WRITE, "&Write\tCtrl+W", help='Write chosen files')
         writeItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/write.png'))
-        transferItem = wx.MenuItem(filemenu, ID_REPLACE, "&Перенос\tCtrl+T", help='Перенести выделенные файлы в другой каталог')
+        transferItem = wx.MenuItem(filemenu, ID_REPLACE, "&Replace\tCtrl+T", help='Replace chosen files to another directory')
         transferItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/remove.png'))
-        deleteItem = wx.MenuItem(filemenu, ID_REMOVE, "&Удалить\tCtrl+D", help='Удалить выделенные файлы')
+        deleteItem = wx.MenuItem(filemenu, ID_REMOVE, "&Delete\tCtrl+D", help='Delete chosen files')
         deleteItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/delete.png'))
-        renameItem = wx.MenuItem(filemenu, ID_RENAME, "&Перемеиновать\tCtrl+R", help='Перемеиновать выделенный файл или каталог')
+        renameItem = wx.MenuItem(filemenu, ID_RENAME, "&Rename\tCtrl+R", help='Rename chosen file or directory')
         renameItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/rename.png'))
         filemenu.AppendItem(newItem)
         filemenu.AppendItem(createItem)
@@ -96,55 +94,55 @@ class FileManager(wx.Frame):
         filemenu.AppendItem(writeItem)
         filemenu.AppendItem(deleteItem)
         filemenu.AppendSeparator()
-        exitItem = wx.MenuItem(filemenu, ID_EXIT, "&Выход", help='Выход из приложения')
+        exitItem = wx.MenuItem(filemenu, ID_EXIT, "&Exit", help='Exit for application')
         exitItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/file/exit.png'))
         filemenu.AppendItem(exitItem)
 
         configmenu = wx.Menu()
-        self.show_statusbar = configmenu.Append(ID_SHOW_STATUSBAR, 'Отображать строку статуса', 'Отображать строку статуса', kind=wx.ITEM_CHECK)
+        self.show_statusbar = configmenu.Append(ID_SHOW_STATUSBAR, 'Show status bar', 'Show status bar', kind=wx.ITEM_CHECK)
         configmenu.Check(self.show_statusbar.GetId(), True)
-        self.preferencesItem = wx.MenuItem(filemenu, ID_OPTIONS, "&Параметры\tCtrl+O", help='Основные параметры приложения')
+        self.preferencesItem = wx.MenuItem(filemenu, ID_OPTIONS, "&Options\tCtrl+O", help='Base options for application')
         self.preferencesItem.SetBitmap(wx.Bitmap(ico_folder + '/icons/ui/menu/preferences/preferences.png'))
         configmenu.AppendItem(self.preferencesItem)
 
         self.menuBar = wx.MenuBar()
-        self.menuBar.Append(filemenu, "&Файл")
-        self.menuBar.Append(configmenu, "&Настройки")
+        self.menuBar.Append(filemenu, "&File")
+        self.menuBar.Append(configmenu, "&Preferences")
 
         # toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT)
-        tb.AddSimpleTool(ID_TOOLBAR_UPDIR, wx.Bitmap(ico_folder + '/icons/ui/toolbar/up.png'), 'Вверх на одну директорию')
-        tb.AddSimpleTool(ID_TOOLBAR_HOME, wx.Bitmap(ico_folder + '/icons/ui/toolbar/home.png'), 'Домой')
-        tb.AddSimpleTool(ID_TOOLBAR_REFRESH, wx.Bitmap(ico_folder + '/icons/ui/toolbar/refresh.png'), 'Обновить текущую директорию')
+        tb.AddSimpleTool(ID_TOOLBAR_UPDIR, wx.Bitmap(ico_folder + '/icons/ui/toolbar/up.png'), 'Go to uppper directory')
+        tb.AddSimpleTool(ID_TOOLBAR_HOME, wx.Bitmap(ico_folder + '/icons/ui/toolbar/home.png'), 'Home')
+        tb.AddSimpleTool(ID_TOOLBAR_REFRESH, wx.Bitmap(ico_folder + '/icons/ui/toolbar/refresh.png'), 'Refresh current directory')
         tb.AddSeparator()
-        tb.AddSimpleTool(ID_TOOLBAR_HELP, wx.Bitmap(ico_folder + '/icons/ui/toolbar/help.png'), 'Помощь')
-        tb.AddSimpleTool(ID_TOOLBAR_ABOUT, wx.Bitmap(ico_folder + '/icons/ui/toolbar/about.png'), 'Об авторах')
+        tb.AddSimpleTool(ID_TOOLBAR_HELP, wx.Bitmap(ico_folder + '/icons/ui/toolbar/help.png'), 'Help')
+        tb.AddSimpleTool(ID_TOOLBAR_ABOUT, wx.Bitmap(ico_folder + '/icons/ui/toolbar/about.png'), 'Authors')
         tb.Realize()
 
         # button panel
         self.sizer2 = wx.BoxSizer(wx.HORIZONTAL)
 
-        button1 = wx.Button(self, ID_BUTTON_WRITE, "Запись")
+        button1 = wx.Button(self, ID_BUTTON_WRITE, "Write")
         button1.SetBackgroundColour('#BFD8DF')
         button1.SetForegroundColour("#2F4D57")
 
-        button2 = wx.Button(self, ID_BUTTON_TRANSFER, "Перенос")
+        button2 = wx.Button(self, ID_BUTTON_TRANSFER, "Replace")
         button2.SetBackgroundColour('#BFD8DF')
         button2.SetForegroundColour("#2F4D57")
 
-        button3 = wx.Button(self, ID_BUTTON_CREATE_FOLDER, "Создать каталог")
+        button3 = wx.Button(self, ID_BUTTON_CREATE_FOLDER, "Create directory")
         button3.SetBackgroundColour('#BFD8DF')
         button3.SetForegroundColour("#2F4D57")
 
-        button4 = wx.Button(self, ID_BUTTON_REMOVE_FILE, "Удалить")
+        button4 = wx.Button(self, ID_BUTTON_REMOVE_FILE, "Delete")
         button4.SetBackgroundColour('#BFD8DF')
         button4.SetForegroundColour("#2F4D57")
 
-        button5 = wx.Button(self, ID_BUTTON_RENAME, "Перемеиновать")
+        button5 = wx.Button(self, ID_BUTTON_RENAME, "Rename")
         button5.SetBackgroundColour('#BFD8DF')
         button5.SetForegroundColour("#2F4D57")
 
-        button6 = wx.Button(self, ID_EXIT, "Выход")
+        button6 = wx.Button(self, ID_EXIT, "Exit")
         button6.SetBackgroundColour('#BFD8DF')
         button6.SetForegroundColour("#2F4D57")
 
@@ -221,51 +219,49 @@ class FileManager(wx.Frame):
         self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
 
     def OnCreateFolder(self, event):
-        dlg = InputDialog(self, -1, 'Введите имя каталога', self.ico_folder, FolderValidator())
+        dlg = InputDialog(self, -1, "Enter directory name", self.ico_folder, FolderValidator())
         if dlg.ShowModal() == wx.ID_OK:
             try:
                 new_folder = self.files_folder.currentDir + dlg.result
                 os.makedirs(new_folder)
             except OSError:
-                wx.MessageBox("Tакой каталог уже существует!\nПожалуйста, дайте файлу другое имя.", 'Ошибка')
+                wx.MessageBox("This directory already exists!\nPlease, type another name.", 'Error')
             except Exception, exc:
-                wx.MessageBox("%s" % exc.message, "Ошибка")
+                wx.MessageBox("%s" % exc.message, "Error")
             self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
         dlg.Destroy()
 
     def OnCreateFile(self, event):
-        dlg = InputDialog(self, -1, 'Введите имя файла и расширение', self.ico_folder, FileValidator())
+        dlg = InputDialog(self, -1, "Type file name and extension", self.ico_folder, FileValidator())
         if dlg.ShowModal() == wx.ID_OK:
             try:
                 new_file = self.files_folder.currentDir + dlg.result
                 new_folders, filename = ntpath.split(dlg.result)
-                # + зафиксить появление окна при перемеиновании
-                # + для окна перемеинования дефолтное значение = имя+тип для файла и просто имя для каталога
                 if len(new_folders) > 0 and len(new_folders.split('/')) >= 1:
                     try:
                         os.makedirs(self.files_folder.currentDir + new_folders)
                     except OSError:
                         pass
                     except Exception, exc:
-                        wx.MessageBox("%s" % exc.message, "Ошибка")
+                        wx.MessageBox("%s" % exc.message, "Error")
                 if os.path.exists(new_file):
                     raise OSError()
                 open(new_file, 'a').close()
             except OSError:
-                wx.MessageBox("Такой файл существует!\nПожалуйста, дайте файлу другое имя.", 'Ошибка')
+                wx.MessageBox("This file already exists!\nPlease, type another name.", 'Error')
             except Exception, exc:
-                wx.MessageBox("%s" % exc.message, "Ошибка")
+                wx.MessageBox("%s" % exc.message, "Error")
             self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
         dlg.Destroy()
 
     def CopyFile(self, event):
-        dlg = wx.FileDialog(self, "Укажите путь к файлу", "", "", "All files (*.*)|*.*", wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        dlg = wx.FileDialog(self, "Choose path to file", "", "", "All files (*.*)|*.*", wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         if dlg.ShowModal() == wx.ID_OK:
             filepath = dlg.GetPath()
             dir, filename = ntpath.split(filepath)
             shutil.copyfile(filepath, self.files_folder.currentDir+filename)
             self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
-            msg_dlg = MsgDlg(None, "Копирование завершено!")
+            msg_dlg = MsgDlg(None, "Copying completed!")
             msg_dlg.ShowModal()
         dlg.Destroy()
 
@@ -285,7 +281,7 @@ class FileManager(wx.Frame):
                     shutil.move(src_file, dst_dir)
 
     def CopyFolder(self, event):
-        dlg = wx.DirDialog(self, "Укажите директорию", style=wx.DD_DEFAULT_STYLE)
+        dlg = wx.DirDialog(self, "Choose directory", style=wx.DD_DEFAULT_STYLE)
         if dlg.ShowModal() == wx.ID_OK:
             folderpath = dlg.GetPath()
             try:
@@ -296,7 +292,7 @@ class FileManager(wx.Frame):
                 pass
             self.CopyMoveOperation(folderpath, self.files_folder.currentDir+new_folder)
             self.files_folder.showFilesInDirectory(self.files_folder.currentDir)
-            msg_dlg = MsgDlg(None, "Копирование завершено!")
+            msg_dlg = MsgDlg(None, "Copying completed!")
             msg_dlg.ShowModal()
         dlg.Destroy()
 
@@ -334,6 +330,6 @@ class FileManager(wx.Frame):
 if __name__ == '__main__':
     app = wx.App(0)
     ico_folder = '..'
-    frame = FileManager(None, -1, 'CloudStorage', ico_folder)
+    frame = FileManager(None, -1, 'Helenae', ico_folder)
     frame.Show(True)
     app.MainLoop()

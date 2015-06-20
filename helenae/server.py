@@ -468,8 +468,6 @@ class DFSServerProtocol(WebSocketServerProtocol):
                     # just send error if not realized
                     else:
                         json_data['error'].append('ERROR: %s command is not already realized...' % json_cmd)
-                # its not real commands on server --> send error
-                # this guy trying to hacking/DDoS server? also reset auth and set ban for 1-3 minutes
                 else:
                     json_data['auth'] = False
                     json_data['error'].append('ERROR: This command is not supported on server...')

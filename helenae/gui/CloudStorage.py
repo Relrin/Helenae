@@ -43,15 +43,15 @@ class CloudStorage(wx.Frame):
             size = (310, 150)
 
         # widgets
-        self.RegisterWindow = RegisterWindow(self, -1, 'Создание аккаунта', ico_folder)
-        self.FileManager = FileManager(self, -1, 'Многопользовательское распределённое приложение организации файлового обмена', ico_folder)
+        self.RegisterWindow = RegisterWindow(self, -1, 'Creating account', ico_folder)
+        self.FileManager = FileManager(self, -1, 'Helenae', ico_folder)
 
         # inputs
-        self.login_label = wx.StaticText(self, ID_TEXT_LABLE_LOG, label='Логин', pos=(15, 15))
-        self.login_input = wx.TextCtrl(self, ID_TEXT_INPUT_LOG, wx.EmptyString, size=(210, -1), pos=(75, 10),
+        self.login_label = wx.StaticText(self, ID_TEXT_LABLE_LOG, label='Login', pos=(15, 15))
+        self.login_input = wx.TextCtrl(self, ID_TEXT_INPUT_LOG, wx.EmptyString, size=(210, -1), pos=(85, 10),
                                        validator = LoginValidator())
-        self.pass_label = wx.StaticText(self, ID_TEXT_LABEL_PSW, label='Пароль', pos=(15, 55))
-        self.pass_input = wx.TextCtrl(self, ID_TEXT_INPUT_PSW, wx.EmptyString, size=(210, -1), pos=(75, 50),
+        self.pass_label = wx.StaticText(self, ID_TEXT_LABEL_PSW, label='Password', pos=(15, 55))
+        self.pass_input = wx.TextCtrl(self, ID_TEXT_INPUT_PSW, wx.EmptyString, size=(210, -1), pos=(85, 50),
                                       style=wx.TE_PASSWORD, validator = PasswordValidator())
 
         # error labels
@@ -64,14 +64,14 @@ class CloudStorage(wx.Frame):
         self.error_psw.SetFont((wx.Font(DefaultErrorLabelFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
 
         # buttons
-        self.accept_button = wx.Button(self, id=ID_BUTTON_ACCEPT, label='Войти', pos=(15, 95))
+        self.accept_button = wx.Button(self, id=ID_BUTTON_ACCEPT, label='Log in', pos=(15, 95))
         self.accept_button.SetBackgroundColour('#BFD8DF')
         self.accept_button.SetForegroundColour("#2F4D57")
         self.accept_button.SetFont((wx.Font(DefaultButtonFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
-        self.cancel_button = wx.Button(self, id=ID_BUTTON_CANCEL, label='Отмена', pos=(110, 95))
+        self.cancel_button = wx.Button(self, id=ID_BUTTON_CANCEL, label='Exit', pos=(110, 95))
 
         # hyperlink to register
-        self.new_member_label = hl.HyperLinkCtrl(self, ID_NEW_MEMBER_TXT, 'Зарегистрироваться...', pos=(15,130))
+        self.new_member_label = hl.HyperLinkCtrl(self, ID_NEW_MEMBER_TXT, 'Register...', pos=(15,130))
         self.new_member_label.EnableRollover(True)
         self.new_member_label.SetUnderlines(False, False, True)
         self.new_member_label.AutoBrowse(False)
@@ -132,6 +132,6 @@ class CloudStorage(wx.Frame):
 if __name__ =='__main__':
     app = wx.App(0)
     ico_folder = '.'
-    frame = CloudStorage(None, -1, 'Авторизация', ico_folder)
+    frame = CloudStorage(None, -1, 'Log in', ico_folder)
     frame.Show()
     app.MainLoop()

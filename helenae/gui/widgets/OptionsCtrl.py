@@ -41,26 +41,25 @@ class TabPanelBasics(wx.Panel):
 
         self.parent = parent
 
-        self.LabelCrypto = wx.StaticText(self, label='Алгоритм шифрования:', pos=(15, 15))
+        self.LabelCrypto = wx.StaticText(self, label='Encryption algorithm:', pos=(15, 15))
 
         self.crypto = ['AES-256', 'Serpent', 'Twofish']
         self.ComboBox = wx.ComboBox(self, choices=self.crypto, style=wx.CB_READONLY, pos=ComboBoxPos, value=self.crypto[0])
 
-        self.LabelUserFolder = wx.StaticText(self, label='Текущий каталог:', pos=(15, 45))
+        self.LabelUserFolder = wx.StaticText(self, label='Current directory:', pos=(15, 45))
         self.InputUserFolder = wx.TextCtrl(self, ID_TAB_ONE_INPUT_USER_FOLDER, size=(214, -1), pos=InputTextCtrlPos, style=wx.TE_READONLY)
         self.InputUserFolder.SetBackgroundColour('#D9D9D9')
         self.InputButton = wx.Button(self, id=ID_TAB_ONE_INPUT_USER_BUTTON, label='..', size=(25, 23), pos=InputButtonPos)
 
-        self.LabelCryptPassword= wx.StaticText(self, label='Ключ шифрования:', pos=(15, 75))
+        self.LabelCryptPassword= wx.StaticText(self, label='Encryption key:', pos=(15, 75))
         self.InputCryptPassword = wx.TextCtrl(self, ID_TAB_ONE_INPUT_CRYPT_PSW, size=(214, -1), pos=(InputTextCtrlPos[0], InputTextCtrlPos[1]+30), style=wx.TE_READONLY)
         self.InputCryptPassword.SetBackgroundColour('#D9D9D9')
         self.InputButton = wx.Button(self, id=ID_TAB_ONE_INPUT_CRYPT_BUTTON, label='..', size=(25, 23), pos=(InputButtonPos[0], InputButtonPos[1]+30))
 
-        self.error_login = wx.StaticText(self, label='В случае удаления файла с настройками, ключ шифрования будет\nтакже утерян! Пожалуйста, сохраните где-нибудь ключ шифрования!', pos=ErrorLabelPos)
+        self.error_login = wx.StaticText(self, label="If file with preferences has been deleted, you're lost all data! Please, save \nsomewhere your encryption key!", pos=ErrorLabelPos)
         self.error_login.SetForegroundColour('#DE4421')
         self.error_login.SetFont((wx.Font(ErrorLabelFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0)))
-
-        self.FolderDialog = wx.DirDialog(self, "Выберите каталог для хранения файлов", "", wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+        self.FolderDialog = wx.DirDialog(self, "Choose catalog for storing files", "", wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
 
         self.Bind(wx.EVT_BUTTON, self.ShowDirDialog, id=ID_TAB_ONE_INPUT_USER_BUTTON)
         self.Bind(wx.EVT_BUTTON, self.InputCryptoKey, id=ID_TAB_ONE_INPUT_CRYPT_BUTTON)
@@ -70,7 +69,7 @@ class TabPanelBasics(wx.Panel):
            self.InputUserFolder.SetValue(self.FolderDialog.GetPath())
 
     def InputCryptoKey(self, event):
-        dlg = InputDialog(self, -1, 'Введите ключ шифования', self.parent.parent.ico_folder, KeyValidator(), lable_name='Значение ключа')
+        dlg = InputDialog(self, -1, 'Enter encryption key', self.parent.parent.ico_folder, KeyValidator(), lable_name='Key value')
         dlg.ShowModal()
         if dlg.result is not None:
             self.InputCryptPassword.SetValue(dlg.result)
@@ -83,7 +82,7 @@ class NotebookCtrl(wx.Notebook):
         self.parent = frame
 
         self.tabBasicPreferences = TabPanelBasics(self)
-        self.AddPage(self.tabBasicPreferences, "Общие")
+        self.AddPage(self.tabBasicPreferences, "Main")
 
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
@@ -136,8 +135,8 @@ class OptionsCtrl(wx.Frame):
 
         # button panel
         self.sizer_h = wx.BoxSizer(wx.HORIZONTAL)
-        self.accept_button = wx.Button(self.panel, id=ID_BUTTON_SAVE, label='Сохранить')
-        self.cancel_button = wx.Button(self.panel, id=ID_BUTTON_CANCEL_SAVE, label='Отмена')
+        self.accept_button = wx.Button(self.panel, id=ID_BUTTON_SAVE, label='Save')
+        self.cancel_button = wx.Button(self.panel, id=ID_BUTTON_CANCEL_SAVE, label='Cancel')
         self.sizer_h.Add(self.accept_button, 0, wx.LEFT, border=DefaultBorderSave)
         self.sizer_h.Add(self.cancel_button, 0, ButtonCancelFlags, border=DefaultBorderCancel)
         self.sizer.AddSizer(self.sizer_h)
@@ -168,8 +167,8 @@ class OptionsCtrl(wx.Frame):
 
     def __setUserFolder(self):
         sp = wx.StandardPaths.Get()
-        self.userFolder = sp.GetDocumentsDir() + '/CloudStorage/users/'
-        self.tmpFolder = sp.GetDocumentsDir() + '/CloudStorage/users/tmp/'
+        self.userFolder = sp.GetDocumentsDir() + '/Helenae/users/'
+        self.tmpFolder = sp.GetDocumentsDir() + '/Helenae/users/tmp/'
 
     def setUserOptionsPath(self, user):
         self.userOptionsPath = self.userFolder + user + '.opt'
@@ -247,6 +246,6 @@ class OptionsCtrl(wx.Frame):
 if __name__ == "__main__":
     app = wx.App(0)
     ico_folder = '..'
-    frame = OptionsCtrl(None, -1, 'Опции', ico_folder)
+    frame = OptionsCtrl(None, -1, 'Options', ico_folder)
     frame.Show()
     app.MainLoop()

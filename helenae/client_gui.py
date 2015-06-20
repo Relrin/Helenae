@@ -26,14 +26,12 @@ from utils.filesystem import getFileList
 
 from gui.CloudStorage import CloudStorage, ID_BUTTON_ACCEPT
 from gui.widgets.Filemanager import ID_BUTTON_WRITE, ID_WRITE, ID_BUTTON_REMOVE_FILE, ID_REMOVE, \
-    ID_BUTTON_RENAME, ID_RENAME, ID_BUTTON_TRANSFER, ID_REPLACE, ID_CREATE_LINK, ID_COPY_FILE_LINK, \
-    ID_EXIT, ID_FOLDER
+    ID_BUTTON_RENAME, ID_RENAME, ID_BUTTON_TRANSFER, ID_REPLACE, ID_CREATE_LINK, ID_COPY_FILE_LINK
 from gui.widgets.RegisterCtrl import ID_BUTTON_REG
 from gui.widgets.CompleteRegCtrl import ID_BUTTON_CLOSE_MSG
 from gui.widgets.InputDialogCtrl import InputDialog
 from gui.widgets.InputLinkCtrl import InputLink
 from gui.widgets.validators.RenameValidator import RenameValidator
-from gui.widgets.validators.ValidatorMsgDlg import ValidatorMsgDialog as MsgDlg
 
 
 class GUIClientProtocol(WebSocketClientProtocol):
@@ -153,9 +151,9 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
         for error_msg in data['error']:
             if 'User not found' in error_msg:
-                self.gui.ShowErrorLogin('Такого пользователя не существует!')
+                self.gui.ShowErrorLogin('User not exists!')
             elif 'Incorrect password' in error_msg:
-                self.gui.ShowErrorPassword('Неправильный пароль!')
+                self.gui.ShowErrorPassword('Invalid password!')
 
     def __CREG(self, data):
         """
@@ -171,13 +169,13 @@ class GUIClientProtocol(WebSocketClientProtocol):
         self.gui.RegisterWindow.PreloaderStop()
         for error_msg in data['error']:
             if 'Length of username was been more than 3 symbols!' in error_msg:
-                self.gui.RegisterWindow.ShowErrorLogin('Логин должен содержать минимум 3 символа!')
+                self.gui.RegisterWindow.ShowErrorLogin('Length of username was been more than 3 symbols!')
             if 'This user already exists' in error_msg:
-                self.gui.RegisterWindow.ShowErrorLogin('Этот логин уже используется! Введите другой.')
+                self.gui.RegisterWindow.ShowErrorLogin('This user already exists. Type another and...')
             if 'Length of password was been more than 6 symbols!' in error_msg:
-                self.gui.RegisterWindow.ShowErrorPassword('Пароль должен содержать минимум 6 символов!')
+                self.gui.RegisterWindow.ShowErrorPassword('Length of password was been more than 6 symbols!')
             if "Full name can't be empty!" in error_msg:
-                self.gui.RegisterWindow.ShowErrorName('Это поле не может быть пустым!')
+                self.gui.RegisterWindow.ShowErrorName("This can't be empty!")
 
     def __READ(self, data):
         base_dir = self.gui.FileManager.options_frame.notebook.tabBasicPreferences.InputUserFolder.GetValue() + '/'
@@ -222,7 +220,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
         selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
         if len(selectedItems) == 0:
-            wx.MessageBox("Для записи надо выбрать минимум один файл или каталог!", "Сообщение")
+            wx.MessageBox("For writing necessary choose file or directory!", "Message")
         else:
             write_files = []
             defaultDir = self.gui.FileManager.files_folder.defaultDir
@@ -271,7 +269,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
         selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
         if len(selectedItems) == 0:
-            wx.MessageBox("Для удаления надо выбрать минимум один файл или каталог!", "Сообщение")
+            wx.MessageBox("For deleting necessary choose file or directory!", "Message")
         else:
             deleted_files = []
             defaultDir = self.gui.FileManager.files_folder.defaultDir
@@ -351,14 +349,14 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
         selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
         if len(selectedItems) != 1:
-            wx.MessageBox("Для операции перемеинования надо выбрать один файл или каталог!", "Сообщение")
+            wx.MessageBox("For renaming necessary choose file or directory!", "Message")
         else:
             try:
                 rnm_files = []
                 currentDir = self.gui.FileManager.files_folder.currentDir
                 defaultDir = self.gui.FileManager.files_folder.defaultDir
                 filename = os.path.splitext(selectedItems[0])[0]
-                dlg = InputDialog(self.gui.FileManager, -1, "Введите новое имя файла или каталога",
+                dlg = InputDialog(self.gui.FileManager, -1, "Enter new file name or directory",
                                   self.gui.FileManager.ico_folder, RenameValidator(), filename)
                 if dlg.ShowModal() == wx.ID_OK:
                     file_path = currentDir + selectedItems[0]
@@ -398,10 +396,10 @@ class GUIClientProtocol(WebSocketClientProtocol):
                     data = dumps({'cmd': 'RENF', 'user': self.login, 'auth': True, 'error': [], 'rename_files': rnm_files})
                     self.sendMessage(data, sync=True)
             except OSError:
-                wx.MessageBox("Такое имя файла или каталога уже существует!", "Сообщение")
+                wx.MessageBox("File or directory with this name already exists!", "Message")
 
     def __CREN(self, data):
-        wx.MessageBox("Задача выполнена успешно!", "Сообщение")
+        wx.MessageBox("Task success processed!", "Message")
         evt = UpdateFileListCtrlEvent()
         wx.PostEvent(self.gui, evt)
 
@@ -411,7 +409,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
         selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
         if len(selectedItems) != 1:
-            wx.MessageBox("Для создания общедоступной ссылки необходимо выбрать файл!", "Сообщение")
+            wx.MessageBox("For creating shared link necessary choose file!", "Error")
         else:
             key = self.gui.FileManager.options_frame.getCryptoKey()
             defaultDir = self.gui.FileManager.files_folder.defaultDir
@@ -425,7 +423,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
                                            file_info=file_info, description='')
                 self.sendMessage(data)
             else:
-                wx.MessageBox("Для создания общедоступной ссылки необходимо выбрать файл!", "Сообщение")
+                wx.MessageBox("For creating shared link necessary choose file!", "Error")
 
     def __CCLN(self, data):
         """
@@ -433,12 +431,12 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
         if data['url'] is None:
             if data['error']:
-                wx.MessageBox(data['error'][0], "Ошибка")
+                wx.MessageBox(data['error'][0], "Error")
             else:
-                wx.MessageBox("Возможно, Вы патаетесь создать ссылку на файл, который еще на записан на сервера."
-                              "\nЗапишите его, а повторите данную операцию.", "Ошибка")
+                wx.MessageBox("Probably, you're tried create link on file, which not written on file servers yet."
+                              "\nWrite him and try again.", "Error")
         else:
-            wx.MessageBox("Ваша ссылка на файл:\n{0}".format(data['url']), "Сообщение")
+            wx.MessageBox("Your link on the file:\n{0}".format(data['url']), "Message")
         del data['error']
         del data['url']
 
@@ -446,7 +444,7 @@ class GUIClientProtocol(WebSocketClientProtocol):
         """
             Send request for download file by link
         """
-        dlg = InputLink(self.gui.FileManager, -1, "Введите ссылку", self.gui.FileManager.ico_folder)
+        dlg = InputLink(self.gui.FileManager, -1, "Enter shared link", self.gui.FileManager.ico_folder)
         if dlg.ShowModal() == wx.ID_OK:
             data = constructDataClient('LINK', self.login, '', True, error='', url=dlg.result)
             self.sendMessage(data)
@@ -464,22 +462,22 @@ class GUIClientProtocol(WebSocketClientProtocol):
             json_file = os.path.normpath(tmp_dir + '/fsc_link_' + self.login + '_' + filename + '_' + str(randint(0, 100000)) + '.json')
             dumpConfigToJSON(json_file, "READU_FILE", user_id, file_id, src_file, key)
             self.__SendInfoToFileServer(json_file, server_ip, server_port)
-            wx.MessageBox("Скачивание файла {0} завершено!".format(filename) , "Сообщение")
+            wx.MessageBox("File downloading {0} has completed!".format(filename), "Message")
 
         file_info = data.get('file_info', None)
         if file_info:
             file_id, filename, key, server = file_info
             if file_id and filename and key and server:
-                dlg = wx.DirDialog(self.gui, "Укажите директорию в которую сохранить файл", style=wx.DD_DEFAULT_STYLE)
+                dlg = wx.DirDialog(self.gui, "Choose directory for saving file", style=wx.DD_DEFAULT_STYLE)
                 if dlg.ShowModal() == wx.ID_OK:
                     save_in = dlg.GetPath()
                     threads.deferToThread(defferedDownloadByLink, data['user_id'], save_in, filename, file_id, key, server)
             else:
-                wx.MessageBox("Ссылка не корректна или файл удален!", "Ошибка")
+                wx.MessageBox("Incorrect link or file has deleted!", "Error")
             del data['user_id']
             del data['file_info']
         else:
-            wx.MessageBox("Ссылка не корректна или файл удален!", "Ошибка")
+            wx.MessageBox("Incorrect link or file has deleted!", "Error")
 
     def __REPF(self, event):
         """
@@ -489,9 +487,9 @@ class GUIClientProtocol(WebSocketClientProtocol):
         defaultDir = self.gui.FileManager.files_folder.defaultDir
         selectedItems = self.gui.FileManager.files_folder.getSelectedItems()
         if len(selectedItems) == 0:
-            wx.MessageBox("Для переноса надо выбрать минимум один файл или каталог!", "Сообщение")
+            wx.MessageBox("For renaming necessary choose file or directory!", "Message")
         else:
-            dlg = wx.DirDialog(self.gui, "Выберите каталог:", style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+            dlg = wx.DirDialog(self.gui, "Choose directory:", style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
             if dlg.ShowModal() == wx.ID_OK:
                 # move files to another folder at user disk
                 replaceToFolder = os.path.normpath(dlg.GetPath()) + '/'
@@ -578,7 +576,7 @@ if __name__ == '__main__':
 
     app = wx.App(0)
     app._factory = None
-    app._frame = CloudStorage(None, -1, 'Аутентификация', './gui/')
+    app._frame = CloudStorage(None, -1, 'Log In', './gui/')
     reactor.registerWxApp(app)
     host_url = "wss://%s:%s" % (options.ip, options.port)
     app._factory = GUIClientFactory(host_url, app)

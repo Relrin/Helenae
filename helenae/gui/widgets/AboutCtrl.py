@@ -33,25 +33,25 @@ class About(wx.Frame):
             size = (300, 200)
 
         # lables, which contains some text
-        txt = """   Многопользовательское распределённое\nприложение организации файлового обмена"""
-        self.about_txt = wx.StaticText(self, id=ID_ABOUT_MAIN, label=txt, pos=(25,15))
+        txt = """Helenae project"""
+        self.about_txt = wx.StaticText(self, id=ID_ABOUT_MAIN, label=txt, pos=(115,15))
         self.about_txt.SetFont(wx.Font(DefaultTxtFontSize, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0))
 
-        about = """Дипломный проект по специальности \n             инженер-программист"""
+        about = """      Simplest analog of distributed file\n   storages like DropBox/SugarSync/etc."""
         self.icons_txt = wx.StaticText(self, id=ID_ABOUT_TXT, label=about, pos=(15, 55))
         self.icons_txt.SetFont(wx.Font(DefaultAboutFontSize, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
 
-        icons = """Иконки предоставлены http://www.fatcow.com/ \nпо лицензии Creative Commons Attribution 3.0"""
+        icons = """Icons provided by http://www.fatcow.com/ \nunder Creative Commons Attribution 3.0 license"""
         self.icons_txt = wx.StaticText(self, id=ID_ABOUT_ICONS, label=icons, pos=(15, 105))
 
-        rights = """© Copyright 2014-2015, Савич Валерий"""
+        rights = """© Copyright 2014-2015, Valeryi Savich"""
         self.rights_txt = wx.StaticText(self, id=ID_ABOUT_RIGHTS, label=rights, pos=(30, 140))
 
         # buttons
-        self.cancel_button = wx.Button(self, id=ID_BUTTON_CLOSE, label='Закрыть', pos=(205, 165))
+        self.cancel_button = wx.Button(self, id=ID_BUTTON_CLOSE, label='Close', pos=(205, 165))
 
         # hyperlink to site
-        self.new_member_label = hl.HyperLinkCtrl(self, ID_LINK_SITE, "Перейти на сайт", pos=(15, 175), URL="https://127.0.0.1:8080/")
+        self.new_member_label = hl.HyperLinkCtrl(self, ID_LINK_SITE, "Go to website", pos=(15, 175), URL="https://127.0.0.1:8080/")
         self.new_member_label.EnableRollover(True)
         self.new_member_label.SetUnderlines(False, False, True)
         self.new_member_label.SetFont(wx.Font(DefaultLinkFontSize, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
@@ -71,6 +71,6 @@ class About(wx.Frame):
 if __name__ =='__main__':
     app = wx.App(0)
     ico_folder = '..'
-    frame = About(None, -1, 'О программе', ico_folder)
+    frame = About(None, -1, 'About', ico_folder)
     frame.Show()
     app.MainLoop()
