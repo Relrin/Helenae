@@ -20,10 +20,10 @@ class InputLink(wx.Dialog):
             fieldPos = (110, 15)
             size = (320, 80)
 
-        self.label = wx.StaticText(self, label="Ссылка на файл:", pos=labelPos)
+        self.label = wx.StaticText(self, label="Link on the file:", pos=labelPos)
         self.field = wx.TextCtrl(self, value="", size=fieldSize, pos=fieldPos)
-        self.button_ok = wx.Button(self, label="Ок", id=wx.ID_OK, pos=(125, 45))
-        self.button_cancel = wx.Button(self, label="Отмена", id=wx.ID_CANCEL, pos=(217, 45))
+        self.button_ok = wx.Button(self, label="Ok", id=wx.ID_OK, pos=(125, 45))
+        self.button_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL, pos=(217, 45))
 
         self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=wx.ID_CANCEL)
@@ -48,6 +48,6 @@ class InputLink(wx.Dialog):
 if __name__ =='__main__':
     app = wx.App(0)
     ico_folder = '..'
-    frame = InputLink(None, -1, 'Введите ссылку', ico_folder)
+    frame = InputLink(None, -1, 'Enter shared link', ico_folder)
     res = frame.ShowModal()
     app.MainLoop()

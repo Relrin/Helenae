@@ -24,13 +24,13 @@ class CompleteRegCtrl(wx.Frame):
             DefaultPosButton = (225, 115)
 
         # lables, which contains some text
-        self.txt = wx.StaticText(self, id=ID_LABLE_TEXT_INFO, label="После перезапуска приложения Вы", pos=(60, 25))
+        self.txt = wx.StaticText(self, id=ID_LABLE_TEXT_INFO, label="After restarting application", pos=(60, 25))
         self.txt.SetFont(wx.Font(DefaultTxtSizeFont, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
-        self.txt = wx.StaticText(self, id=ID_LABLE_TEXT_INFO, label="можете выполнить аутентификацию", pos=(57, 40))
+        self.txt = wx.StaticText(self, id=ID_LABLE_TEXT_INFO, label="you can log in", pos=(95, 40))
         self.txt.SetFont(wx.Font(DefaultTxtSizeFont, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0))
 
         # buttons
-        self.cancel_button = wx.Button(self, id=ID_BUTTON_CLOSE_MSG, label='Закрыть', pos=DefaultPosButton)
+        self.cancel_button = wx.Button(self, id=ID_BUTTON_CLOSE_MSG, label='Close', pos=DefaultPosButton)
 
         # form settings
         size = (320, 150)
@@ -42,6 +42,6 @@ class CompleteRegCtrl(wx.Frame):
 if __name__ =='__main__':
     app = wx.App(0)
     ico_folder = '..'
-    frame = CompleteRegCtrl(None, -1, 'Сообщение', ico_folder)
+    frame = CompleteRegCtrl(None, -1, 'Message', ico_folder)
     frame.Show()
     app.MainLoop()
