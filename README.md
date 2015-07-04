@@ -20,7 +20,7 @@ Features
 -------
 - opening/writing/renaming/removing/transfering file or catalog
 - synchronization files
-- encryption by AES-256
+- encryption by AES-256/Serpent/Twofish
 - console/GUI clients
 - supporting multiple file servers
 - shared files between users (via creating links)
