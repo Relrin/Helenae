@@ -1,0 +1,13 @@
+Helenae is written and maintained by Valeryi Savich and various contributors:
+
+Project Leader / Developer:
+
+- Valeryi Savich <relrin78@gmail.com>
+
+Contributors of code for Helenae project:
+
+The rsync implementation was taken from the ActiveState code recipies
+(https://code.activestate.com/recipes/577518-rsync-algorithm/). The original 
+code is MIT licensed. The following copyrights apply:
+
+- (c) Eric Pruitt 2010-2016
