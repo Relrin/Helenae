@@ -4,20 +4,26 @@ import collections
 import hashlib
 
 """
-    rsync implementation for Helenae project
+This is a pure Python implementation of the [rsync algorithm](TM96).
+
+[TM96] Andrew Tridgell and Paul Mackerras. The rsync algorithm.
+Technical Report TR-CS-96-05, Canberra 0200 ACT, Australia, 1996.
+http://samba.anu.edu.au/rsync/.
+
+### Example Use Case: ###
 
     # On the system containing the file that needs to be patched
-    unpatched = open("/home/relrin/build.txt", "rb")
-    hashes = blockchecksums(unpatched)
+    >>> unpatched = open("unpatched.file", "rb")
+    >>> hashes = blockchecksums(unpatched)
 
     # On the remote system after having received `hashes`
-    patchedfile = open("/home/relrin/b.txt", "rb")
-    delta = rsyncdelta(patchedfile, hashes)
+    >>> patchedfile = open("patched.file", "rb")
+    >>> delta = rsyncdelta(patchedfile, hashes)
 
     # System with the unpatched file after receiving `delta`
-    unpatched.seek(0)
-    save_to = open("/home/relrin/new-b.txt", "wb")
-    patchstream(unpatched, save_to, delta)
+    >>> unpatched.seek(0)
+    >>> save_to = open("locally-patched.file", "wb")
+    >>> patchstream(unpatched, save_to, delta)
 """
 
 
